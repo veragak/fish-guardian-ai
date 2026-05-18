@@ -52,14 +52,15 @@ function DashboardView({ data }: { data: FarmDashboard }) {
       {critical.length > 0 && (
         <div className="bg-destructive text-destructive-foreground">
           <div className="mx-auto max-w-7xl px-6 py-4 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" />
-            <div className="text-sm leading-relaxed">
+            <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0 animate-pulse" />
+            <div className="text-sm leading-relaxed flex-1">
               <span className="font-bold">CRITICAL ALERT — Cage {critical[0].position}:</span>{" "}
               Dissolved oxygen at {critical[0].dissolvedOxygen} mg/L (below 7 mg/L stress threshold).
               Mortality {critical[0].mortality}% and rising. Likely early <em>Pasteurella skyensis</em> outbreak —
               contact your veterinarian immediately.{" "}
               <span className="font-semibold">Estimated exposure: {fmtEUR(totals.estimatedLossEUR)}</span>
             </div>
+            <AlertSound active={critical.length > 0} />
           </div>
         </div>
       )}
