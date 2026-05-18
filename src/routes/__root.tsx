@@ -10,6 +10,7 @@ import {
 
 import appCss from "../styles.css?url";
 import { Nav } from "../components/Nav";
+import { AuthProvider } from "@/lib/auth-context";
 
 function NotFoundComponent() {
   return (
@@ -96,12 +97,14 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen flex flex-col">
-        <Nav />
-        <main className="flex-1">
-          <Outlet />
-        </main>
-      </div>
+      <AuthProvider>
+        <div className="min-h-screen flex flex-col">
+          <Nav />
+          <main className="flex-1">
+            <Outlet />
+          </main>
+        </div>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
