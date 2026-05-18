@@ -15,6 +15,8 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AiAssistantRouteImport } from './routes/ai-assistant'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiElevenlabsTtsRouteImport } from './routes/api/elevenlabs/tts'
+import { Route as ApiElevenlabsSttRouteImport } from './routes/api/elevenlabs/stt'
 
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
@@ -46,6 +48,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiElevenlabsTtsRoute = ApiElevenlabsTtsRouteImport.update({
+  id: '/api/elevenlabs/tts',
+  path: '/api/elevenlabs/tts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiElevenlabsSttRoute = ApiElevenlabsSttRouteImport.update({
+  id: '/api/elevenlabs/stt',
+  path: '/api/elevenlabs/stt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +66,8 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/onboarding': typeof OnboardingRoute
+  '/api/elevenlabs/stt': typeof ApiElevenlabsSttRoute
+  '/api/elevenlabs/tts': typeof ApiElevenlabsTtsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +76,8 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/onboarding': typeof OnboardingRoute
+  '/api/elevenlabs/stt': typeof ApiElevenlabsSttRoute
+  '/api/elevenlabs/tts': typeof ApiElevenlabsTtsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,6 +87,8 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/onboarding': typeof OnboardingRoute
+  '/api/elevenlabs/stt': typeof ApiElevenlabsSttRoute
+  '/api/elevenlabs/tts': typeof ApiElevenlabsTtsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -81,8 +99,18 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/onboarding'
+    | '/api/elevenlabs/stt'
+    | '/api/elevenlabs/tts'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/ai-assistant' | '/auth' | '/dashboard' | '/onboarding'
+  to:
+    | '/'
+    | '/about'
+    | '/ai-assistant'
+    | '/auth'
+    | '/dashboard'
+    | '/onboarding'
+    | '/api/elevenlabs/stt'
+    | '/api/elevenlabs/tts'
   id:
     | '__root__'
     | '/'
@@ -91,6 +119,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/onboarding'
+    | '/api/elevenlabs/stt'
+    | '/api/elevenlabs/tts'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -100,6 +130,8 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRoute
   OnboardingRoute: typeof OnboardingRoute
+  ApiElevenlabsSttRoute: typeof ApiElevenlabsSttRoute
+  ApiElevenlabsTtsRoute: typeof ApiElevenlabsTtsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -146,6 +178,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/elevenlabs/tts': {
+      id: '/api/elevenlabs/tts'
+      path: '/api/elevenlabs/tts'
+      fullPath: '/api/elevenlabs/tts'
+      preLoaderRoute: typeof ApiElevenlabsTtsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/elevenlabs/stt': {
+      id: '/api/elevenlabs/stt'
+      path: '/api/elevenlabs/stt'
+      fullPath: '/api/elevenlabs/stt'
+      preLoaderRoute: typeof ApiElevenlabsSttRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -156,6 +202,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRoute,
   OnboardingRoute: OnboardingRoute,
+  ApiElevenlabsSttRoute: ApiElevenlabsSttRoute,
+  ApiElevenlabsTtsRoute: ApiElevenlabsTtsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
