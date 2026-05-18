@@ -128,5 +128,6 @@ export const getFarmDashboard = createServerFn({ method: "GET" })
         critical,
         estimatedLossEUR,
       },
+      nearbyZones: getNearbyZones(farm.latitude, farm.longitude, 5),
     };
   });
