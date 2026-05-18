@@ -20,24 +20,24 @@ if (!KEY) throw new Error("ELEVENLABS_API_KEY missing");
 
 const FPS = 30;
 const VOICE_ID = "nPczCjzI2devNBz1zQrb"; // Brian — warm motivational
-const GAP_SEC = 0.35; // breathing room between scenes
-const PAD_END_SEC = 0.8; // tail after final line
+const GAP_SEC = 0.45; // small breathing room between scenes
+const PAD_END_SEC = 1.0; // tail after final line
 const TARGET_TOTAL_SEC = 120; // exact 2:00
 
 // ---- Per-scene narration (1 chunk per scene, matches the visuals) ----
 const CHUNKS = [
-  "In Norway's coldest fjords, sixty-two million salmon died last year. Not from predators. Not from storms. From disease that nobody saw coming.",
-  "By the time farmers spot the warning signs, it is already too late. Entire pens are lost in days.",
-  "Nine hundred and forty million euros — lost to disease every single year.",
+  "In Norway's coldest fjords, sixty-two million salmon died last year. Not from predators. Not from storms. From disease that nobody saw coming. Entire farms, wiped out overnight.",
+  "By the time farmers spot the warning signs, it is already too late. Whole pens are lost in days. Decades of work, gone in a single week.",
+  "Nine hundred and forty million euros — lost to disease every single year. In Norwegian salmon farming alone.",
   "There had to be a better way. So we built one.",
-  "This is AquaSense. We detect fish disease forty-eight hours before it becomes visible.",
+  "This is AquaSense. We detect fish disease forty-eight hours before it becomes visible. Two full days of warning, where today there is none.",
   "Four live signals, from every cage, every minute. Dissolved oxygen. Sea temperature. pH levels. Mortality rate. Our AI watches the patterns humans miss.",
-  "When risk rises in a single cage, farmers get an instant alert on their phone.",
-  "Forty-eight hours of head start. Time to isolate the cage, adjust feeding, and save the fish.",
-  "Act in forty-eight hours, only three percent loss. Wait twelve hours, thirty-four percent. Do nothing, and ninety-two percent of the cage is gone.",
-  "A twenty billion euro global industry. Built for the people who feed the world.",
+  "When risk rises in a single cage, farmers get an instant alert on their phone. Pinpointing the exact cage that needs attention.",
+  "Forty-eight hours of head start. Time to isolate the cage, adjust feeding, call the vet, and save the fish.",
+  "Act in forty-eight hours, only three percent loss. Wait twelve hours, thirty-four percent. Do nothing, and ninety-two percent of the cage is gone. Early action saves the fish, and saves the farm.",
+  "A twenty billion euro global industry, racing to feed a growing planet. Built for the farmers who are doing it.",
   "Just fifteen hundred euros per cage, per year. Pilots launching Q2 twenty twenty-six. Commercial rollout Q1 twenty twenty-seven.",
-  "AquaSense. Let's protect what feeds us. Built by Vera, Maggie, and Rishi. Visit aquasense dot app.",
+  "AquaSense. Let's protect what feeds us. Built with care by Vera, Maggie, and Rishi. The future of aquaculture starts now. Visit aquasense dot app.",
 ];
 
 // ---- Helper ----
