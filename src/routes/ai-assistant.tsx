@@ -174,10 +174,21 @@ function AssistantPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
-            placeholder="Ask about your farm, your cages, or disease risks…"
-            className="flex-1 resize-none rounded-lg bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary"
+            placeholder={recording ? "Listening… click stop when done" : transcribing ? "Transcribing…" : "Ask about your farm, your cages, or disease risks…"}
+            disabled={recording || transcribing}
+            className="flex-1 resize-none rounded-lg bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
           />
-          <button type="submit" disabled={busy} aria-label="Send"
+          <button
+            type="button"
+            onClick={recording ? stopRecording : startRecording}
+            disabled={busy || transcribing}
+            aria-label={recording ? "Stop recording" : "Start voice input"}
+            title={recording ? "Stop recording" : "Hold a question — I'll listen"}
+            className={`grid place-items-center w-11 h-11 rounded-lg border transition disabled:opacity-50 ${recording ? "bg-destructive border-destructive text-destructive-foreground animate-pulse" : "bg-white/5 border-white/15 text-white hover:bg-white/10"}`}
+          >
+            {transcribing ? <Loader2 className="w-4 h-4 animate-spin" /> : recording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          </button>
+          <button type="submit" disabled={busy || recording || transcribing} aria-label="Send"
             className="grid place-items-center w-11 h-11 rounded-lg bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50">
             <Send className="w-4 h-4" />
           </button>
