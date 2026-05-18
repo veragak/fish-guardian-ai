@@ -31,12 +31,37 @@ function AssistantPage() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [voiceOn, setVoiceOn] = useState<boolean>(() => typeof window !== "undefined" && localStorage.getItem("aquasense.voice") === "on");
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<BlobPart[]>([]);
+  const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy]);
 
-  async function submit(text?: string) {
+  const speak = useCallback(async (text: string) => {
+    try {
+      // Strip markdown so the voice reads cleanly.
+      const clean = text.replace(/[#*_`>]/g, "").replace(/\[(.*?)\]\(.*?\)/g, "$1").replace(/\n{2,}/g, ". ").slice(0, 1400);
+      const res = await fetch("/api/elevenlabs/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: clean }),
+      });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      if (ttsAudioRef.current) { ttsAudioRef.current.pause(); }
+      const a = new Audio(url);
+      ttsAudioRef.current = a;
+      await a.play();
+    } catch { /* ignore TTS errors */ }
+  }, []);
+
+  const submit = useCallback(async (text?: string) => {
     const content = (text ?? input).trim();
     if (!content || busy) return;
     setInput("");
@@ -47,10 +72,59 @@ function AssistantPage() {
     try {
       const { reply } = await send({ data: { messages: next.map((m) => ({ role: m.role, content: m.content })) } });
       setMessages((m) => [...m, { role: "assistant", content: reply }]);
-    } catch (e: any) {
-      setError(e?.message ?? "AI request failed");
+      if (voiceOn) speak(reply);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "AI request failed");
     } finally { setBusy(false); }
-  }
+  }, [input, busy, messages, send, voiceOn, speak]);
+
+  const toggleVoice = () => {
+    const next = !voiceOn;
+    setVoiceOn(next);
+    localStorage.setItem("aquasense.voice", next ? "on" : "off");
+    if (!next && ttsAudioRef.current) ttsAudioRef.current.pause();
+  };
+
+  const startRecording = async () => {
+    if (recording || busy || transcribing) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      chunksRef.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" });
+        chunksRef.current = [];
+        setTranscribing(true);
+        try {
+          const form = new FormData();
+          form.append("audio", blob, "speech.webm");
+          const res = await fetch("/api/elevenlabs/stt", { method: "POST", body: form });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json?.error ?? `STT ${res.status}`);
+          const text: string = (json.text ?? "").trim();
+          if (text) submit(text);
+        } catch (e: unknown) {
+          setError(e instanceof Error ? e.message : "Transcription failed");
+        } finally {
+          setTranscribing(false);
+        }
+      };
+      recorderRef.current = mr;
+      mr.start();
+      setRecording(true);
+    } catch {
+      setError("Microphone permission denied or unavailable.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (recorderRef.current && recording) {
+      recorderRef.current.stop();
+      setRecording(false);
+    }
+  };
 
   if (loading || !user) return <div className="bg-navy text-white/70 min-h-[calc(100vh-4rem)] grid place-items-center">Loading…</div>;
 
