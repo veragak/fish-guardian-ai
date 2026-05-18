@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Send, Sparkles, Mic, Square, Volume2, VolumeX, Loader2 } from "lucide-react";
+import { Send, Sparkles, Volume2, VolumeX } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/lib/auth-context";
 import { chatWithFarm } from "@/lib/chat.functions";
