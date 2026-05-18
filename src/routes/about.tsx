@@ -11,9 +11,9 @@ export const Route = createFileRoute("/about")({
 });
 
 const sources = [
-  { name: "Fiskehelserapporten 2023", org: "Norwegian Veterinary Institute (Veterinærinstituttet)", url: "https://www.vetinst.no/rapporter-og-publikasjoner/rapporter/2024/fish-health-report-2023" },
+  { name: "Fiskehelserapporten 2023", org: "Norwegian Veterinary Institute (Veterinærinstituttet)", url: "https://www.vetinst.no/en/reports-and-publications" },
   { name: "Open-Meteo Marine API", org: "Open-Meteo (CC-BY 4.0)", url: "https://open-meteo.com/en/docs/marine-weather-api" },
-  { name: "BarentsWatch Fish Health", org: "BarentsWatch, Norwegian government", url: "https://www.barentswatch.no/en/fishhealth/" },
+  { name: "BarentsWatch Fish Health", org: "BarentsWatch, Norwegian government", url: "https://www.barentswatch.no/fiskehelse/" },
   { name: "Fish Pool ASA — Salmon spot index", org: "Fish Pool ASA", url: "https://fishpool.eu/" },
 ];
 
