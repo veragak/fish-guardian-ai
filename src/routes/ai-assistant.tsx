@@ -111,6 +111,7 @@ function AssistantPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [voiceOn, setVoiceOn] = useState<boolean>(() => typeof window !== "undefined" && localStorage.getItem("aquasense.voice") === "on");
+  const [startingRecording, setStartingRecording] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [transcribing, setTranscribing] = useState(false);
@@ -214,10 +215,13 @@ function AssistantPage() {
   }, [cleanupRecording, clearRecordingTimer]);
 
   const startRecording = async () => {
-    if (recording || busy || transcribing) return;
+    if (recording || startingRecording || busy || transcribing) return;
     setError(null);
+    setStartingRecording(true);
     try {
-      await cleanupRecording();
+      if (audioContextRef.current || audioStreamRef.current) {
+        await cleanupRecording();
+      }
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -234,10 +238,12 @@ function AssistantPage() {
       }
 
       const context = new AudioContextCtor();
-      await context.resume();
+      if (context.state === "suspended") {
+        await context.resume();
+      }
 
       const source = context.createMediaStreamSource(stream);
-      const processor = context.createScriptProcessor(4096, 1, 1);
+      const processor = context.createScriptProcessor(1024, 1, 1);
       const monitorGain = context.createGain();
       monitorGain.gain.value = 0;
 
@@ -255,10 +261,14 @@ function AssistantPage() {
         pcmChunksRef.current.push(copy);
 
         let peak = 0;
+        let energy = 0;
         for (let i = 0; i < input.length; i += 1) {
-          peak = Math.max(peak, Math.abs(input[i]));
+          const amplitude = Math.abs(input[i]);
+          peak = Math.max(peak, amplitude);
+          energy += amplitude * amplitude;
         }
-        if (peak > 0.015) {
+        const rms = Math.sqrt(energy / input.length);
+        if (peak > 0.006 || rms > 0.002) {
           heardAudioRef.current = true;
         }
       };
@@ -283,7 +293,16 @@ function AssistantPage() {
     } catch (e: unknown) {
       await cleanupRecording();
       setRecording(false);
-      setError(e instanceof Error ? e.message : "Microphone permission denied or unavailable.");
+      if (e instanceof DOMException) {
+        if (e.name === "NotAllowedError") setError("Microphone access is blocked — allow mic access in your browser and try again.");
+        else if (e.name === "NotFoundError") setError("No microphone was found on this device.");
+        else if (e.name === "NotReadableError") setError("Your microphone is busy in another app or browser tab.");
+        else setError(e.message);
+      } else {
+        setError(e instanceof Error ? e.message : "Microphone permission denied or unavailable.");
+      }
+    } finally {
+      setStartingRecording(false);
     }
   };
 
@@ -300,8 +319,8 @@ function AssistantPage() {
       await cleanupRecording();
       const blob = encodeWavBlob(chunks, sampleRateRef.current);
 
-      if (elapsed < 900 || blob.size < 4000 || !heardAudioRef.current) {
-        setError("Didn't catch that — click the mic, speak for a second, then click stop.");
+      if (elapsed < 700 || blob.size < 2500) {
+        setError("Recording was too short — click the mic, speak, then click stop.");
         return;
       }
 
@@ -380,21 +399,21 @@ function AssistantPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
-            placeholder={recording ? "Listening… click stop when done" : transcribing ? "Transcribing…" : "Ask about your farm, your cages, or disease risks…"}
-            disabled={recording || transcribing}
+            placeholder={startingRecording ? "Starting microphone…" : recording ? "Listening… click stop when done" : transcribing ? "Transcribing…" : "Ask about your farm, your cages, or disease risks…"}
+            disabled={recording || startingRecording || transcribing}
             className="flex-1 resize-none rounded-lg bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
           />
           <button
             type="button"
             onClick={recording ? stopRecording : startRecording}
-            disabled={busy || transcribing}
+            disabled={busy || startingRecording || transcribing}
             aria-label={recording ? "Stop recording" : "Start voice input"}
              title={recording ? "Click to stop and send" : "Click to start, speak, then click again to stop"}
             className={`grid place-items-center w-11 h-11 rounded-lg border transition disabled:opacity-50 ${recording ? "bg-destructive border-destructive text-destructive-foreground animate-pulse" : "bg-white/5 border-white/15 text-white hover:bg-white/10"}`}
           >
-            {transcribing ? <Loader2 className="w-4 h-4 animate-spin" /> : recording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            {startingRecording || transcribing ? <Loader2 className="w-4 h-4 animate-spin" /> : recording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
           </button>
-          <button type="submit" disabled={busy || recording || transcribing} aria-label="Send"
+          <button type="submit" disabled={busy || recording || startingRecording || transcribing} aria-label="Send"
             className="grid place-items-center w-11 h-11 rounded-lg bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50">
             <Send className="w-4 h-4" />
           </button>

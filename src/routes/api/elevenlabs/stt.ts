@@ -15,7 +15,7 @@ export const Route = createFileRoute("/api/elevenlabs/stt")({
           return Response.json({ error: "audio file required (field 'audio')" }, { status: 400 });
         }
         const incoming = audio as File;
-        if (incoming.size < 3000) {
+        if (incoming.size < 1500) {
           return Response.json({ error: "audio too short — click the mic, speak for a second, then click stop" }, { status: 400 });
         }
         if (incoming.size > 10 * 1024 * 1024) {
