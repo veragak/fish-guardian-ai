@@ -20,7 +20,7 @@ export const Route = createFileRoute("/api/elevenlabs/stt")({
         }
 
         const upstreamForm = new FormData();
-        upstreamForm.append("file", audio, "speech.webm");
+        upstreamForm.append("file", blob, "speech.webm");
         upstreamForm.append("model_id", "scribe_v2");
         upstreamForm.append("tag_audio_events", "false");
         upstreamForm.append("diarize", "false");
