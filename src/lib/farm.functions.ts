@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { fetchMarine, modelCages, type CageReading, type MarineSnapshot } from "./marine";
+import { getNearbyZones, type NearbyZone } from "./barentswatch";
 
 export type FarmDashboard = {
   farm: {
