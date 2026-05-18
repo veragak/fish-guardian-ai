@@ -13,6 +13,8 @@ import { TransitionSeries, linearTiming } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { loadFont } from "@remotion/google-fonts/Inter";
 
+import { SCENE_DURS, TOTAL_FRAMES as GEN_TOTAL } from "./scene-timing";
+
 const { fontFamily } = loadFont("normal", { weights: ["400", "500", "700", "900"], subsets: ["latin"] });
 
 export const FPS = 30;
@@ -20,23 +22,8 @@ export const WIDTH = 1920;
 export const HEIGHT = 1080;
 const TRANS = 12;
 
-// Per-scene duration in frames (30fps). Sum minus transitions ≈ voiceover length (~100s).
-const SCENE_DURS = [
-  300, // 1  Hook            0:00 - 0:10
-  300, // 2  Problem         0:10 - 0:20
-  240, // 3  Cost            0:20 - 0:28
-  180, // 4  Bridge          0:28 - 0:34
-  270, // 5  Intro AquaSense 0:34 - 0:43
-  420, // 6  Sensors         0:43 - 0:57
-  180, // 7  Dashboard       0:57 - 1:03
-  120, // 8  Alert 48h       1:03 - 1:07
-  390, // 9  Simulator       1:07 - 1:20
-  300, // 10 Market          1:20 - 1:30
-  210, // 11 Pricing/Roadmap 1:30 - 1:37
-  240, // 12 CTA + Credits   1:37 - 1:45
-];
-const TOTAL_RAW = SCENE_DURS.reduce((a, b) => a + b, 0);
-export const TOTAL_FRAMES = TOTAL_RAW - TRANS * (SCENE_DURS.length - 1);
+// Per-scene durations come from gen-audio.mjs — each scene matches its voiceover line.
+export const TOTAL_FRAMES = GEN_TOTAL - TRANS * (SCENE_DURS.length - 1);
 
 // Brand palette
 const NAVY = "#0A1628";
