@@ -219,7 +219,9 @@ function AssistantPage() {
     setError(null);
     setStartingRecording(true);
     try {
-      await cleanupRecording();
+      if (audioContextRef.current || audioStreamRef.current) {
+        await cleanupRecording();
+      }
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -241,7 +243,7 @@ function AssistantPage() {
       }
 
       const source = context.createMediaStreamSource(stream);
-      const processor = context.createScriptProcessor(4096, 1, 1);
+      const processor = context.createScriptProcessor(1024, 1, 1);
       const monitorGain = context.createGain();
       monitorGain.gain.value = 0;
 
@@ -317,7 +319,7 @@ function AssistantPage() {
       await cleanupRecording();
       const blob = encodeWavBlob(chunks, sampleRateRef.current);
 
-      if (elapsed < 900 || blob.size < 4000) {
+      if (elapsed < 700 || blob.size < 2500) {
         setError("Recording was too short — click the mic, speak, then click stop.");
         return;
       }
