@@ -89,17 +89,30 @@ function AssistantPage() {
     if (recording || busy || transcribing) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream);
+      const preferred = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/ogg;codecs=opus",
+        "audio/mp4",
+      ].find((t) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported?.(t));
+      const mr = preferred ? new MediaRecorder(stream, { mimeType: preferred }) : new MediaRecorder(stream);
       chunksRef.current = [];
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mr.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" });
+        const type = mr.mimeType || preferred || "audio/webm";
+        const blob = new Blob(chunksRef.current, { type });
         chunksRef.current = [];
+        if (blob.size < 1500) {
+          setTranscribing(false);
+          setError("Recording too short — hold the mic while speaking.");
+          return;
+        }
         setTranscribing(true);
         try {
+          const ext = type.includes("ogg") ? "ogg" : type.includes("mp4") ? "m4a" : "webm";
           const form = new FormData();
-          form.append("audio", blob, "speech.webm");
+          form.append("audio", blob, `speech.${ext}`);
           const res = await fetch("/api/elevenlabs/stt", { method: "POST", body: form });
           const json = await res.json();
           if (!res.ok) throw new Error(json?.error ?? `STT ${res.status}`);
