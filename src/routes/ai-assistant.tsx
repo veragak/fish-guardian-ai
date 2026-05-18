@@ -107,14 +107,19 @@ function AssistantPage() {
 
 function Bubble({ role, text, pulsing }: { role: "user" | "assistant"; text: string; pulsing?: boolean }) {
   const isUser = role === "user";
+  if (isUser) {
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary text-primary-foreground px-4 py-3 text-sm whitespace-pre-wrap">{text}</div>
+      </div>
+    );
+  }
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div className={
-        isUser
-          ? "max-w-[85%] rounded-2xl rounded-br-sm bg-primary text-primary-foreground px-4 py-3 text-sm whitespace-pre-wrap"
-          : `max-w-[90%] rounded-2xl rounded-bl-sm bg-white/[0.06] border border-white/10 text-white px-4 py-3 text-sm whitespace-pre-wrap leading-relaxed ${pulsing ? "animate-pulse" : ""}`
-      }>
-        {text}
+    <div className="flex justify-start">
+      <div className={`max-w-[90%] rounded-2xl rounded-bl-sm bg-white/[0.06] border border-white/10 text-white px-4 py-3 text-sm leading-relaxed ${pulsing ? "animate-pulse" : ""}`}>
+        <div className="space-y-2 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-primary [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:font-semibold [&_h3]:text-white [&_strong]:text-white [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_p]:my-1 [&_em]:italic [&_code]:bg-white/10 [&_code]:px-1 [&_code]:rounded">
+          <ReactMarkdown>{text}</ReactMarkdown>
+        </div>
       </div>
     </div>
   );
