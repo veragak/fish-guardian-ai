@@ -1,8 +1,8 @@
-// Generate voiceover + motivational music via ElevenLabs.
+// Per-scene voiceover chunks → exact sync with visuals.
 // Outputs:
-//   remotion/public/voiceover.mp3
-//   remotion/public/music.mp3
-//   remotion/public/audio-meta.json  (voiceover duration in seconds)
+//   remotion/public/voiceover.mp3   (concatenated, with small gaps)
+//   remotion/public/music.mp3       (length-matched motivational instrumental)
+//   remotion/src/scene-timing.ts    (per-scene frame durations consumed by MainVideo)
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,87 +10,168 @@ import { execSync } from "node:child_process";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.resolve(__dirname, "../public");
+const SRC = path.resolve(__dirname, "../src");
+const TMP = path.resolve(__dirname, "../.tmp-audio");
 await fs.mkdir(PUBLIC, { recursive: true });
+await fs.mkdir(TMP, { recursive: true });
 
 const KEY = process.env.ELEVENLABS_API_KEY;
 if (!KEY) throw new Error("ELEVENLABS_API_KEY missing");
 
-// ---- Narration script (~120s @ ~150wpm) ----
-const NARRATION = `In Norway's coldest fjords, sixty-two million salmon died last year. Not from predators. Not from storms. From disease that nobody saw coming.
+const FPS = 30;
+const VOICE_ID = "nPczCjzI2devNBz1zQrb"; // Brian — warm motivational
+const GAP_SEC = 0.45; // small breathing room between scenes
+const PAD_END_SEC = 1.0; // tail after final line
+const TARGET_TOTAL_SEC = 120; // exact 2:00
 
-By the time farmers spot the warning signs, it is already too late. Entire pens are lost in days. Nine hundred and forty million euros — gone. Every single year.
+// ---- Per-scene narration (1 chunk per scene, matches the visuals) ----
+const CHUNKS = [
+  "In Norway's coldest fjords, sixty-two million salmon died last year. Not from predators. Not from storms. From disease that nobody saw coming. Entire farms, wiped out overnight.",
+  "By the time farmers spot the warning signs, it is already too late. Whole pens are lost in days. Decades of work, gone in a single week.",
+  "Nine hundred and forty million euros — lost to disease every single year. In Norwegian salmon farming alone.",
+  "There had to be a better way. So we built one.",
+  "This is AquaSense. We detect fish disease forty-eight hours before it becomes visible. Two full days of warning, where today there is none.",
+  "Four live signals, from every cage, every minute. Dissolved oxygen. Sea temperature. pH levels. Mortality rate. Our AI watches the patterns humans miss.",
+  "When risk rises in a single cage, farmers get an instant alert on their phone. Pinpointing the exact cage that needs attention.",
+  "Forty-eight hours of head start. Time to isolate the cage, adjust feeding, call the vet, and save the fish.",
+  "Act in forty-eight hours, only three percent loss. Wait twelve hours, thirty-four percent. Do nothing, and ninety-two percent of the cage is gone. Early action saves the fish, and saves the farm.",
+  "A twenty billion euro global industry, racing to feed a growing planet. Built for the farmers who are doing it.",
+  "Just fifteen hundred euros per cage, per year. Pilots launching Q2 twenty twenty-six. Commercial rollout Q1 twenty twenty-seven.",
+  "AquaSense. Let's protect what feeds us. Built with care by Vera, Maggie, and Rishi. The future of aquaculture starts now. Visit aquasense dot app.",
+];
 
-We knew there had to be a better way. So we built one.
+// ---- Helper ----
+async function tts(text, prev, next, idx) {
+  const res = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}?output_format=mp3_44100_128`,
+    {
+      method: "POST",
+      headers: { "xi-api-key": KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text,
+        model_id: "eleven_multilingual_v2",
+        previous_text: prev || undefined,
+        next_text: next || undefined,
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.8,
+          style: 0.45,
+          use_speaker_boost: true,
+          speed: 1.0, // regular pace
+        },
+      }),
+    }
+  );
+  if (!res.ok) throw new Error(`TTS ${idx} failed: ${res.status} ${await res.text()}`);
+  return Buffer.from(await res.arrayBuffer());
+}
 
-This is AquaSense. We detect fish disease forty-eight hours before it becomes visible.
+function probeDur(file) {
+  const out = execSync(
+    `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${file}"`
+  ).toString().trim();
+  return parseFloat(out);
+}
 
-How? Four live signals from every cage, every minute. Dissolved oxygen. Sea temperature. pH levels. Mortality rate. Our AI watches the patterns humans miss.
+// ---- 1. Generate all chunks (batched to respect concurrency limit) ----
+console.log("Generating", CHUNKS.length, "voice chunks...");
+const BATCH = 4;
+const buffers = new Array(CHUNKS.length);
+for (let i = 0; i < CHUNKS.length; i += BATCH) {
+  const batch = CHUNKS.slice(i, i + BATCH);
+  const out = await Promise.all(
+    batch.map((text, j) => tts(text, CHUNKS[i + j - 1] || "", CHUNKS[i + j + 1] || "", i + j))
+  );
+  out.forEach((b, j) => (buffers[i + j] = b));
+}
 
-When risk rises in a single cage, farmers get an alert on their phone — in time to act. Isolate the cage. Adjust feeding. Call the vet. Save the fish.
+// Save and measure each
+const chunkDurations = [];
+const chunkPaths = [];
+for (let i = 0; i < buffers.length; i++) {
+  const p = path.join(TMP, `chunk-${String(i).padStart(2, "0")}.mp3`);
+  await fs.writeFile(p, buffers[i]);
+  const d = probeDur(p);
+  chunkDurations.push(d);
+  chunkPaths.push(p);
+  console.log(`  chunk ${i + 1}: ${d.toFixed(2)}s — "${CHUNKS[i].slice(0, 60)}..."`);
+}
 
-Our what-if simulator shows the difference clearly. Act in forty-eight hours, only three percent loss. Wait twelve hours, thirty-four percent. Do nothing — ninety-two percent of the cage is gone.
+const speechTotal = chunkDurations.reduce((a, b) => a + b, 0);
+const baseGapsTotal = GAP_SEC * (CHUNKS.length - 1) + PAD_END_SEC;
+const baselineTotal = speechTotal + baseGapsTotal;
+console.log(`Baseline total: ${baselineTotal.toFixed(2)}s (target ${TARGET_TOTAL_SEC}s)`);
 
-This is not just technology. This is the future of aquaculture. Built for the farmers who feed the world. For an industry worth twenty billion euros. For oceans that deserve smarter care.
+// Distribute remaining time to reach exactly 120s by lengthening per-scene gaps.
+// Each scene_i gap_i = base + extra (only after non-last scenes).
+const remaining = Math.max(0, TARGET_TOTAL_SEC - baselineTotal);
+const extraPerGap = remaining / (CHUNKS.length - 1);
+console.log(`Extra padding per gap: ${extraPerGap.toFixed(3)}s`);
 
-AquaSense. Fifteen hundred euros per cage, per year. Pilots launch in Q2 twenty twenty-six. Commercial rollout in Q1 twenty twenty-seven.
+// ---- 2. Build silence files (one per gap) ----
+async function makeSilence(seconds, outPath) {
+  execSync(
+    `ffmpeg -y -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -t ${seconds.toFixed(3)} -q:a 9 -acodec libmp3lame "${outPath}" 2>/dev/null`
+  );
+}
 
-Built by Vera, Maggie, and Rishi. Because losing sixty-two million salmon a year is not a future we accept.
-
-Visit aquasense dot app. Let's protect what feeds us.`;
-
-// ---- 1. Voiceover (Brian — warm, motivational) ----
-const VOICE_ID = "nPczCjzI2devNBz1zQrb"; // Brian
-console.log("Generating voiceover...");
-const ttsRes = await fetch(
-  `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}?output_format=mp3_44100_128`,
-  {
-    method: "POST",
-    headers: { "xi-api-key": KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      text: NARRATION,
-      model_id: "eleven_multilingual_v2",
-      voice_settings: {
-        stability: 0.45,
-        similarity_boost: 0.8,
-        style: 0.55,
-        use_speaker_boost: true,
-        speed: 1.0,
-      },
-    }),
+// Build the concat list: chunk, silence, chunk, silence, ..., chunk, tailSilence
+const listLines = [];
+for (let i = 0; i < chunkPaths.length; i++) {
+  listLines.push(`file '${chunkPaths[i]}'`);
+  if (i < chunkPaths.length - 1) {
+    const gap = GAP_SEC + extraPerGap;
+    const silPath = path.join(TMP, `gap-${String(i).padStart(2, "0")}.mp3`);
+    await makeSilence(gap, silPath);
+    listLines.push(`file '${silPath}'`);
   }
-);
-if (!ttsRes.ok) throw new Error(`TTS failed: ${ttsRes.status} ${await ttsRes.text()}`);
-const ttsBuf = Buffer.from(await ttsRes.arrayBuffer());
-await fs.writeFile(path.join(PUBLIC, "voiceover.mp3"), ttsBuf);
-console.log(`  voiceover.mp3 — ${(ttsBuf.length / 1024).toFixed(0)} KB`);
+}
+const tailPath = path.join(TMP, "tail.mp3");
+await makeSilence(PAD_END_SEC, tailPath);
+listLines.push(`file '${tailPath}'`);
 
-// ---- 2. Music (motivational cinematic instrumental, ~125s) ----
+const listPath = path.join(TMP, "concat.txt");
+await fs.writeFile(listPath, listLines.join("\n"));
+
+// ---- 3. Concat into final voiceover ----
+const voPath = path.join(PUBLIC, "voiceover.mp3");
+execSync(`ffmpeg -y -f concat -safe 0 -i "${listPath}" -c copy "${voPath}" 2>/dev/null`);
+const voDur = probeDur(voPath);
+console.log(`Final voiceover: ${voDur.toFixed(2)}s`);
+
+// ---- 4. Per-scene frame durations ----
+// scene_i covers chunk_i + the gap that follows it (or final pad)
+const sceneSeconds = chunkDurations.map((d, i) =>
+  i < chunkDurations.length - 1 ? d + GAP_SEC + extraPerGap : d + PAD_END_SEC
+);
+const sceneFrames = sceneSeconds.map((s) => Math.round(s * FPS));
+const totalFrames = sceneFrames.reduce((a, b) => a + b, 0);
+console.log(
+  `Scene frames: [${sceneFrames.join(", ")}] = ${totalFrames} frames (${(totalFrames / FPS).toFixed(2)}s)`
+);
+
+await fs.writeFile(
+  path.join(SRC, "scene-timing.ts"),
+  `// AUTO-GENERATED by scripts/gen-audio.mjs — do not edit by hand.
+export const SCENE_DURS: readonly number[] = ${JSON.stringify(sceneFrames)};
+export const TOTAL_FRAMES = ${totalFrames};
+`
+);
+
+// ---- 5. Music: length-matched motivational instrumental ----
 console.log("Generating music...");
-const MUSIC_PROMPT =
-  "Uplifting cinematic motivational instrumental for a tech startup pitch video. Soft inspiring piano intro that builds into warm orchestral strings, gentle electronic pulse, and hopeful uplifting crescendo. Hopeful, optimistic, modern, polished. No vocals. Ocean-inspired, calm but powerful and building.";
+const musicMs = Math.min(180000, Math.round((totalFrames / FPS + 2) * 1000));
 const musicRes = await fetch("https://api.elevenlabs.io/v1/music", {
   method: "POST",
   headers: { "xi-api-key": KEY, "Content-Type": "application/json" },
   body: JSON.stringify({
-    prompt: MUSIC_PROMPT,
-    music_length_ms: 125000,
+    prompt:
+      "Uplifting cinematic motivational instrumental for a tech startup pitch video. Soft inspiring piano intro that builds into warm orchestral strings, gentle electronic pulse, and a hopeful uplifting crescendo. Hopeful, optimistic, modern, polished. No vocals. Ocean-inspired, calm but powerful and building.",
+    music_length_ms: musicMs,
   }),
 });
 if (!musicRes.ok) throw new Error(`Music failed: ${musicRes.status} ${await musicRes.text()}`);
-const musicBuf = Buffer.from(await musicRes.arrayBuffer());
-await fs.writeFile(path.join(PUBLIC, "music.mp3"), musicBuf);
-console.log(`  music.mp3 — ${(musicBuf.length / 1024).toFixed(0)} KB`);
+await fs.writeFile(path.join(PUBLIC, "music.mp3"), Buffer.from(await musicRes.arrayBuffer()));
+console.log("Music saved.");
 
-// ---- 3. Measure voiceover duration via ffprobe ----
-const voPath = path.join(PUBLIC, "voiceover.mp3");
-const probe = execSync(
-  `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${voPath}"`
-).toString().trim();
-const durationSec = parseFloat(probe);
-console.log(`  voiceover duration: ${durationSec.toFixed(2)}s`);
-
-await fs.writeFile(
-  path.join(PUBLIC, "audio-meta.json"),
-  JSON.stringify({ voiceoverDurationSec: durationSec }, null, 2)
-);
-console.log("Done.");
+console.log("\nAll set.");
