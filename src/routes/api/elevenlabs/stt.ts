@@ -11,12 +11,11 @@ export const Route = createFileRoute("/api/elevenlabs/stt")({
 
         const form = await request.formData();
         const audio = form.get("audio");
-        if (!(audio instanceof File) && !(audio instanceof Blob)) {
+        if (!audio || typeof audio === "string") {
           return Response.json({ error: "audio file required (field 'audio')" }, { status: 400 });
         }
-        // Cap upload at ~10MB for safety.
-        const size = (audio as Blob).size;
-        if (size > 10 * 1024 * 1024) {
+        const blob = audio as Blob;
+        if (blob.size > 10 * 1024 * 1024) {
           return Response.json({ error: "audio too large (>10MB)" }, { status: 413 });
         }
 
