@@ -22,6 +22,7 @@ export type FarmDashboard = {
     critical: number;
     estimatedLossEUR: number;
   };
+  nearbyZones: NearbyZone[];
 };
 
 export const getMyFarm = createServerFn({ method: "GET" })
