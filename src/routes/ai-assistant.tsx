@@ -85,8 +85,11 @@ function AssistantPage() {
     if (!next && ttsAudioRef.current) ttsAudioRef.current.pause();
   };
 
+  const recordStartRef = useRef<number>(0);
+
   const startRecording = async () => {
     if (recording || busy || transcribing) return;
+    setError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const preferred = [
@@ -100,12 +103,13 @@ function AssistantPage() {
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mr.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
+        const durationMs = Date.now() - recordStartRef.current;
         const type = mr.mimeType || preferred || "audio/webm";
         const blob = new Blob(chunksRef.current, { type });
         chunksRef.current = [];
-        if (blob.size < 1500) {
+        if (durationMs < 600 || blob.size < 800) {
           setTranscribing(false);
-          setError("Recording too short — hold the mic while speaking.");
+          setError("Didn't catch that — click the mic, speak your question, then click stop.");
           return;
         }
         setTranscribing(true);
@@ -118,6 +122,7 @@ function AssistantPage() {
           if (!res.ok) throw new Error(json?.error ?? `STT ${res.status}`);
           const text: string = (json.text ?? "").trim();
           if (text) submit(text);
+          else setError("Couldn't hear anything — try again a bit louder.");
         } catch (e: unknown) {
           setError(e instanceof Error ? e.message : "Transcription failed");
         } finally {
@@ -125,7 +130,8 @@ function AssistantPage() {
         }
       };
       recorderRef.current = mr;
-      mr.start();
+      recordStartRef.current = Date.now();
+      mr.start(250);
       setRecording(true);
     } catch {
       setError("Microphone permission denied or unavailable.");
@@ -133,9 +139,18 @@ function AssistantPage() {
   };
 
   const stopRecording = () => {
-    if (recorderRef.current && recording) {
-      recorderRef.current.stop();
+    if (!recorderRef.current || !recording) return;
+    const elapsed = Date.now() - recordStartRef.current;
+    const doStop = () => {
+      try { recorderRef.current?.requestData?.(); } catch { /* noop */ }
+      recorderRef.current?.stop();
       setRecording(false);
+    };
+    if (elapsed < 700) {
+      // Ensure we capture at least one chunk before stopping
+      setTimeout(doStop, 700 - elapsed);
+    } else {
+      doStop();
     }
   };
 
@@ -196,7 +211,7 @@ function AssistantPage() {
             onClick={recording ? stopRecording : startRecording}
             disabled={busy || transcribing}
             aria-label={recording ? "Stop recording" : "Start voice input"}
-            title={recording ? "Stop recording" : "Hold a question — I'll listen"}
+            title={recording ? "Click to stop and send" : "Click to start, click again to stop"}
             className={`grid place-items-center w-11 h-11 rounded-lg border transition disabled:opacity-50 ${recording ? "bg-destructive border-destructive text-destructive-foreground animate-pulse" : "bg-white/5 border-white/15 text-white hover:bg-white/10"}`}
           >
             {transcribing ? <Loader2 className="w-4 h-4 animate-spin" /> : recording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
