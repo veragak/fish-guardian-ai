@@ -211,7 +211,7 @@ function AssistantPage() {
             onClick={recording ? stopRecording : startRecording}
             disabled={busy || transcribing}
             aria-label={recording ? "Stop recording" : "Start voice input"}
-            title={recording ? "Stop recording" : "Hold a question — I'll listen"}
+            title={recording ? "Click to stop and send" : "Click to start, click again to stop"}
             className={`grid place-items-center w-11 h-11 rounded-lg border transition disabled:opacity-50 ${recording ? "bg-destructive border-destructive text-destructive-foreground animate-pulse" : "bg-white/5 border-white/15 text-white hover:bg-white/10"}`}
           >
             {transcribing ? <Loader2 className="w-4 h-4 animate-spin" /> : recording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
