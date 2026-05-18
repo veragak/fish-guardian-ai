@@ -1,101 +1,130 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, ArrowDown, ArrowRight } from "lucide-react";
-import { cages, type Cage } from "../data/cages";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { AlertTriangle, ArrowDown, ArrowRight, Waves, Wind, Thermometer } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { getFarmDashboard, type FarmDashboard } from "@/lib/farm.functions";
 import { Sparkline } from "../components/Sparkline";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
       { title: "Live Dashboard — AquaSense" },
-      { name: "description", content: "Real-time health monitoring across every cage at Hardangerfjord Site A." },
-      { property: "og:title", content: "AquaSense Live Dashboard" },
-      { property: "og:description", content: "Real-time disease risk monitoring for salmon cages." },
+      { name: "description", content: "Live disease-risk monitoring across every cage on your farm." },
     ],
   }),
   component: Dashboard,
 });
 
-const metrics = [
-  { value: "6", label: "Active Cages" },
-  { value: "1", label: "Critical Alerts", tone: "danger" as const },
-  { value: "190,430", label: "Fish at risk" },
-  { value: "€2,400,000", label: "Estimated loss if untreated", tone: "danger" as const },
-];
-
 function Dashboard() {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const fetchDashboard = useServerFn(getFarmDashboard);
+
+  useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["dashboard", user?.id],
+    queryFn: () => fetchDashboard(),
+    enabled: !!user,
+    refetchInterval: 60_000,
+  });
+
+  useEffect(() => {
+    if (!isLoading && user && data === null) navigate({ to: "/onboarding" });
+  }, [data, isLoading, user, navigate]);
+
+  if (loading || isLoading || !user) return <div className="mx-auto max-w-7xl px-6 py-20 text-muted-foreground">Loading your farm…</div>;
+  if (error) return <div className="mx-auto max-w-7xl px-6 py-20 text-destructive">Could not load farm: {(error as Error).message}</div>;
+  if (!data) return null;
+  return <DashboardView data={data} />;
+}
+
+function fmtEUR(n: number) { return "€" + n.toLocaleString("en-US"); }
+
+function DashboardView({ data }: { data: FarmDashboard }) {
+  const { farm, marine, cages, totals } = data;
+  const critical = cages.filter((c) => c.status === "critical");
   return (
     <div>
-      {/* Critical alert banner */}
-      <div className="bg-destructive text-destructive-foreground">
-        <div className="mx-auto max-w-7xl px-6 py-4 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" />
-          <div className="text-sm leading-relaxed">
-            <span className="font-bold">CRITICAL ALERT — Cage-1:</span>{" "}
-            Dissolved oxygen dropped 27% over 15 days. Early Pasteurellosis detected.
-            Contact your veterinarian immediately.{" "}
-            <span className="font-semibold">Estimated exposure: €2,400,000</span>
+      {critical.length > 0 && (
+        <div className="bg-destructive text-destructive-foreground">
+          <div className="mx-auto max-w-7xl px-6 py-4 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" />
+            <div className="text-sm leading-relaxed">
+              <span className="font-bold">CRITICAL ALERT — Cage {critical[0].position}:</span>{" "}
+              Dissolved oxygen at {critical[0].dissolvedOxygen} mg/L (below 7 mg/L stress threshold).
+              Mortality {critical[0].mortality}% and rising. Likely early <em>Pasteurella skyensis</em> outbreak —
+              contact your veterinarian immediately.{" "}
+              <span className="font-semibold">Estimated exposure: {fmtEUR(totals.estimatedLossEUR)}</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Site bar */}
       <div className="border-b bg-card">
         <div className="mx-auto max-w-7xl px-6 py-4 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
-          <div className="font-semibold">Hardangerfjord Site A</div>
-          <div className="text-muted-foreground">License NOR-42540</div>
-          <div className="text-muted-foreground">Atlantic Salmon <span className="italic">(Salmo salar)</span></div>
+          <div className="font-semibold">{farm.name}</div>
+          {farm.license && <div className="text-muted-foreground">License {farm.license}</div>}
+          <div className="text-muted-foreground">{farm.species}</div>
+          <div className="text-muted-foreground tabular">{farm.latitude.toFixed(2)}°N, {farm.longitude.toFixed(2)}°E</div>
           <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="w-2 h-2 rounded-full bg-success animate-pulse" /> Live
+            <span className="w-2 h-2 rounded-full bg-success animate-pulse" /> Live data from Open-Meteo
           </div>
         </div>
       </div>
 
       <div className="mx-auto max-w-7xl px-6 py-8">
-        {/* Metric cards */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {metrics.map((m) => (
-            <div key={m.label} className="rounded-xl border bg-card p-5">
-              <div className={`text-2xl md:text-3xl font-bold tracking-tight tabular ${m.tone === "danger" ? "text-destructive" : ""}`}>
-                {m.value}
-              </div>
-              <div className="mt-1 text-xs uppercase tracking-wide text-muted-foreground font-medium">
-                {m.label}
-              </div>
-            </div>
-          ))}
+        {/* Live environmental band */}
+        <div className="rounded-xl border bg-card p-4 flex flex-wrap items-center gap-x-8 gap-y-2 text-sm">
+          <div className="flex items-center gap-2"><Thermometer className="w-4 h-4 text-primary" /><span className="text-muted-foreground">Sea surface</span><b className="tabular">{marine.sst.toFixed(1)}°C</b></div>
+          <div className="flex items-center gap-2"><Waves className="w-4 h-4 text-primary" /><span className="text-muted-foreground">Wave height</span><b className="tabular">{marine.waveHeight.toFixed(1)} m</b></div>
+          <div className="flex items-center gap-2"><Wind className="w-4 h-4 text-primary" /><span className="text-muted-foreground">Wind</span><b className="tabular">{marine.windSpeed.toFixed(1)} m/s</b></div>
+          <div className="ml-auto text-xs text-muted-foreground">Source: {marine.source}</div>
         </div>
 
-        {/* Cage grid */}
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Metric value={String(cages.length)} label="Active cages" />
+          <Metric value={String(totals.critical)} label="Critical alerts" tone={totals.critical > 0 ? "danger" : undefined} />
+          <Metric value={totals.fish.toLocaleString()} label="Fish under monitoring" />
+          <Metric value={fmtEUR(totals.estimatedLossEUR)} label="Est. exposure if untreated" tone={totals.critical > 0 ? "danger" : undefined} />
+        </div>
+
         <div className="mt-10 flex items-end justify-between">
           <div>
             <h2 className="text-xl font-bold tracking-tight">Cage health</h2>
-            <p className="text-sm text-muted-foreground">Last updated 12 seconds ago</p>
+            <p className="text-sm text-muted-foreground">Modeled from real-time sea data + per-cage telemetry · refreshes every 60s</p>
           </div>
         </div>
 
         <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {cages.map((c) => <CageCard key={c.id} cage={c} />)}
+          {cages.map((c) => <CageCard key={c.id || c.position} cage={c} />)}
         </div>
       </div>
     </div>
   );
 }
 
-function CageCard({ cage }: { cage: Cage }) {
+function Metric({ value, label, tone }: { value: string; label: string; tone?: "danger" }) {
+  return (
+    <div className="rounded-xl border bg-card p-5">
+      <div className={`text-2xl md:text-3xl font-bold tracking-tight tabular ${tone === "danger" ? "text-destructive" : ""}`}>{value}</div>
+      <div className="mt-1 text-xs uppercase tracking-wide text-muted-foreground font-medium">{label}</div>
+    </div>
+  );
+}
+
+function CageCard({ cage }: { cage: FarmDashboard["cages"][number] }) {
   const critical = cage.status === "critical";
+  const elevated = cage.status === "elevated";
   return (
     <div className={`rounded-xl border bg-card p-5 ${critical ? "ring-2 ring-destructive/30 border-destructive/40" : ""}`}>
       <div className="flex items-center justify-between">
-        <div className="font-semibold">Cage {cage.id}</div>
-        {critical ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 text-destructive px-2.5 py-1 text-xs font-bold uppercase tracking-wide">
-            Critical
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-success/10 text-success px-2.5 py-1 text-xs font-bold uppercase tracking-wide">
-            Low
-          </span>
-        )}
+        <div className="font-semibold">Cage {cage.position}</div>
+        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide ${critical ? "bg-destructive/10 text-destructive" : elevated ? "bg-yellow-500/10 text-yellow-600" : "bg-success/10 text-success"}`}>
+          {cage.status}
+        </span>
       </div>
 
       <div className="mt-3 flex items-baseline gap-2">
@@ -115,11 +144,8 @@ function CageCard({ cage }: { cage: Cage }) {
       </dl>
 
       {critical && (
-        <Link
-          to="/ai-assistant"
-          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
-        >
-          View AI Analysis <ArrowRight className="w-4 h-4" />
+        <Link to="/ai-assistant" className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90">
+          Ask AI for analysis <ArrowRight className="w-4 h-4" />
         </Link>
       )}
     </div>
@@ -131,8 +157,7 @@ function Row({ label, value, trend, danger }: { label: string; value: string; tr
     <div>
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className={`tabular font-medium flex items-center gap-1 ${danger && trend ? "text-destructive" : ""}`}>
-        {value}
-        {trend === "down" && <ArrowDown className="w-3.5 h-3.5" />}
+        {value}{trend === "down" && <ArrowDown className="w-3.5 h-3.5" />}
       </dd>
     </div>
   );
