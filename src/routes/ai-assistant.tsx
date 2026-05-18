@@ -6,6 +6,85 @@ import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/lib/auth-context";
 import { chatWithFarm } from "@/lib/chat.functions";
 
+type WindowWithWebkitAudio = Window & typeof globalThis & {
+  webkitAudioContext?: typeof AudioContext;
+};
+
+function mergeFloat32Chunks(chunks: Float32Array[]) {
+  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const merged = new Float32Array(totalLength);
+  let offset = 0;
+
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  return merged;
+}
+
+function downsampleBuffer(samples: Float32Array, inputSampleRate: number, targetSampleRate = 16000) {
+  if (inputSampleRate <= targetSampleRate) return samples;
+
+  const ratio = inputSampleRate / targetSampleRate;
+  const length = Math.round(samples.length / ratio);
+  const downsampled = new Float32Array(length);
+  let offsetResult = 0;
+  let offsetBuffer = 0;
+
+  while (offsetResult < downsampled.length) {
+    const nextOffsetBuffer = Math.round((offsetResult + 1) * ratio);
+    let accum = 0;
+    let count = 0;
+
+    for (let i = offsetBuffer; i < nextOffsetBuffer && i < samples.length; i += 1) {
+      accum += samples[i];
+      count += 1;
+    }
+
+    downsampled[offsetResult] = count > 0 ? accum / count : 0;
+    offsetResult += 1;
+    offsetBuffer = nextOffsetBuffer;
+  }
+
+  return downsampled;
+}
+
+function encodeWavBlob(chunks: Float32Array[], inputSampleRate: number) {
+  const merged = mergeFloat32Chunks(chunks);
+  const samples = downsampleBuffer(merged, inputSampleRate);
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buffer);
+  const writeString = (offset: number, value: string) => {
+    for (let i = 0; i < value.length; i += 1) {
+      view.setUint8(offset + i, value.charCodeAt(i));
+    }
+  };
+
+  writeString(0, "RIFF");
+  view.setUint32(4, 36 + samples.length * 2, true);
+  writeString(8, "WAVE");
+  writeString(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, 16000, true);
+  view.setUint32(28, 16000 * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, "data");
+  view.setUint32(40, samples.length * 2, true);
+
+  let offset = 44;
+  for (let i = 0; i < samples.length; i += 1) {
+    const sample = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+    offset += 2;
+  }
+
+  return new Blob([buffer], { type: "audio/wav" });
+}
+
 export const Route = createFileRoute("/ai-assistant")({
   head: () => ({ meta: [{ title: "AI Assistant — AquaSense" }] }),
   component: AssistantPage,
@@ -33,10 +112,19 @@ function AssistantPage() {
   const [error, setError] = useState<string | null>(null);
   const [voiceOn, setVoiceOn] = useState<boolean>(() => typeof window !== "undefined" && localStorage.getItem("aquasense.voice") === "on");
   const [recording, setRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [transcribing, setTranscribing] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+  const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const monitorGainRef = useRef<GainNode | null>(null);
+  const pcmChunksRef = useRef<Float32Array[]>([]);
+  const sampleRateRef = useRef(16000);
+  const heardAudioRef = useRef(false);
+  const recordingActiveRef = useRef(false);
+  const recordingTimerRef = useRef<number | null>(null);
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
@@ -87,70 +175,157 @@ function AssistantPage() {
 
   const recordStartRef = useRef<number>(0);
 
+  const clearRecordingTimer = useCallback(() => {
+    if (recordingTimerRef.current !== null) {
+      window.clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+  }, []);
+
+  const cleanupRecording = useCallback(async () => {
+    clearRecordingTimer();
+    recordingActiveRef.current = false;
+
+    processorRef.current?.disconnect();
+    sourceNodeRef.current?.disconnect();
+    monitorGainRef.current?.disconnect();
+
+    processorRef.current = null;
+    sourceNodeRef.current = null;
+    monitorGainRef.current = null;
+
+    audioStreamRef.current?.getTracks().forEach((track) => track.stop());
+    audioStreamRef.current = null;
+
+    if (audioContextRef.current) {
+      try {
+        await audioContextRef.current.close();
+      } catch {
+        /* noop */
+      }
+      audioContextRef.current = null;
+    }
+  }, [clearRecordingTimer]);
+
+  useEffect(() => () => {
+    void cleanupRecording();
+    clearRecordingTimer();
+    ttsAudioRef.current?.pause();
+  }, [cleanupRecording, clearRecordingTimer]);
+
   const startRecording = async () => {
     if (recording || busy || transcribing) return;
     setError(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const preferred = [
-        "audio/webm;codecs=opus",
-        "audio/webm",
-        "audio/ogg;codecs=opus",
-        "audio/mp4",
-      ].find((t) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported?.(t));
-      const mr = preferred ? new MediaRecorder(stream, { mimeType: preferred }) : new MediaRecorder(stream);
-      chunksRef.current = [];
-      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      mr.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const durationMs = Date.now() - recordStartRef.current;
-        const type = mr.mimeType || preferred || "audio/webm";
-        const blob = new Blob(chunksRef.current, { type });
-        chunksRef.current = [];
-        if (durationMs < 600 || blob.size < 800) {
-          setTranscribing(false);
-          setError("Didn't catch that — click the mic, speak your question, then click stop.");
-          return;
+      await cleanupRecording();
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      const AudioContextCtor = window.AudioContext || (window as WindowWithWebkitAudio).webkitAudioContext;
+
+      if (!AudioContextCtor) {
+        throw new Error("Audio recording is not supported in this browser.");
+      }
+
+      const context = new AudioContextCtor();
+      await context.resume();
+
+      const source = context.createMediaStreamSource(stream);
+      const processor = context.createScriptProcessor(4096, 1, 1);
+      const monitorGain = context.createGain();
+      monitorGain.gain.value = 0;
+
+      pcmChunksRef.current = [];
+      sampleRateRef.current = context.sampleRate;
+      heardAudioRef.current = false;
+      recordingActiveRef.current = true;
+
+      processor.onaudioprocess = (event) => {
+        if (!recordingActiveRef.current) return;
+
+        const input = event.inputBuffer.getChannelData(0);
+        const copy = new Float32Array(input.length);
+        copy.set(input);
+        pcmChunksRef.current.push(copy);
+
+        let peak = 0;
+        for (let i = 0; i < input.length; i += 1) {
+          peak = Math.max(peak, Math.abs(input[i]));
         }
-        setTranscribing(true);
-        try {
-          const ext = type.includes("ogg") ? "ogg" : type.includes("mp4") ? "m4a" : "webm";
-          const form = new FormData();
-          form.append("audio", blob, `speech.${ext}`);
-          const res = await fetch("/api/elevenlabs/stt", { method: "POST", body: form });
-          const json = await res.json();
-          if (!res.ok) throw new Error(json?.error ?? `STT ${res.status}`);
-          const text: string = (json.text ?? "").trim();
-          if (text) submit(text);
-          else setError("Couldn't hear anything — try again a bit louder.");
-        } catch (e: unknown) {
-          setError(e instanceof Error ? e.message : "Transcription failed");
-        } finally {
-          setTranscribing(false);
+        if (peak > 0.015) {
+          heardAudioRef.current = true;
         }
       };
-      recorderRef.current = mr;
+
+      source.connect(processor);
+      processor.connect(monitorGain);
+      monitorGain.connect(context.destination);
+
+      audioStreamRef.current = stream;
+      audioContextRef.current = context;
+      sourceNodeRef.current = source;
+      processorRef.current = processor;
+      monitorGainRef.current = monitorGain;
+
       recordStartRef.current = Date.now();
-      mr.start(250);
+      setRecordingSeconds(0);
+      clearRecordingTimer();
+      recordingTimerRef.current = window.setInterval(() => {
+        setRecordingSeconds(Math.max(0, Math.floor((Date.now() - recordStartRef.current) / 1000)));
+      }, 250);
       setRecording(true);
-    } catch {
-      setError("Microphone permission denied or unavailable.");
+    } catch (e: unknown) {
+      await cleanupRecording();
+      setRecording(false);
+      setError(e instanceof Error ? e.message : "Microphone permission denied or unavailable.");
     }
   };
 
   const stopRecording = () => {
-    if (!recorderRef.current || !recording) return;
+    if (!recording) return;
     const elapsed = Date.now() - recordStartRef.current;
-    const doStop = () => {
-      try { recorderRef.current?.requestData?.(); } catch { /* noop */ }
-      recorderRef.current?.stop();
+    const doStop = async () => {
       setRecording(false);
+      clearRecordingTimer();
+      setRecordingSeconds(Math.max(1, Math.round(elapsed / 1000)));
+      recordingActiveRef.current = false;
+
+      const chunks = [...pcmChunksRef.current];
+      await cleanupRecording();
+      const blob = encodeWavBlob(chunks, sampleRateRef.current);
+
+      if (elapsed < 900 || blob.size < 4000 || !heardAudioRef.current) {
+        setError("Didn't catch that — click the mic, speak for a second, then click stop.");
+        return;
+      }
+
+      setTranscribing(true);
+      try {
+        const form = new FormData();
+        form.append("audio", blob, "speech.wav");
+        const res = await fetch("/api/elevenlabs/stt", { method: "POST", body: form });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error ?? `STT ${res.status}`);
+        const text: string = (json.text ?? "").trim();
+        if (text) submit(text);
+        else setError("Couldn't hear anything — try again a bit louder.");
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Transcription failed");
+      } finally {
+        setTranscribing(false);
+      }
     };
+
     if (elapsed < 700) {
-      // Ensure we capture at least one chunk before stopping
-      setTimeout(doStop, 700 - elapsed);
+      window.setTimeout(() => { void doStop(); }, 700 - elapsed);
     } else {
-      doStop();
+      void doStop();
     }
   };
 
@@ -181,6 +356,9 @@ function AssistantPage() {
           {messages.map((m, i) => <Bubble key={i} role={m.role} text={m.content} />)}
           {busy && <Bubble role="assistant" text="…analyzing your farm data" pulsing />}
           {error && <div className="rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm px-3 py-2">{error}</div>}
+          {recording && (
+            <div className="text-sm text-white/70">Recording… {recordingSeconds}s</div>
+          )}
           {messages.length <= 1 && !busy && (
             <div className="pt-4 flex flex-wrap gap-2">
               {SUGGESTIONS.map((s) => (
@@ -211,7 +389,7 @@ function AssistantPage() {
             onClick={recording ? stopRecording : startRecording}
             disabled={busy || transcribing}
             aria-label={recording ? "Stop recording" : "Start voice input"}
-            title={recording ? "Click to stop and send" : "Click to start, click again to stop"}
+             title={recording ? "Click to stop and send" : "Click to start, speak, then click again to stop"}
             className={`grid place-items-center w-11 h-11 rounded-lg border transition disabled:opacity-50 ${recording ? "bg-destructive border-destructive text-destructive-foreground animate-pulse" : "bg-white/5 border-white/15 text-white hover:bg-white/10"}`}
           >
             {transcribing ? <Loader2 className="w-4 h-4 animate-spin" /> : recording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
