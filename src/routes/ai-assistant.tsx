@@ -356,6 +356,9 @@ function AssistantPage() {
           {messages.map((m, i) => <Bubble key={i} role={m.role} text={m.content} />)}
           {busy && <Bubble role="assistant" text="…analyzing your farm data" pulsing />}
           {error && <div className="rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm px-3 py-2">{error}</div>}
+          {recording && (
+            <div className="text-sm text-white/70">Recording… {recordingSeconds}s</div>
+          )}
           {messages.length <= 1 && !busy && (
             <div className="pt-4 flex flex-wrap gap-2">
               {SUGGESTIONS.map((s) => (
@@ -386,7 +389,7 @@ function AssistantPage() {
             onClick={recording ? stopRecording : startRecording}
             disabled={busy || transcribing}
             aria-label={recording ? "Stop recording" : "Start voice input"}
-            title={recording ? "Click to stop and send" : "Click to start, click again to stop"}
+             title={recording ? "Click to stop and send" : "Click to start, speak, then click again to stop"}
             className={`grid place-items-center w-11 h-11 rounded-lg border transition disabled:opacity-50 ${recording ? "bg-destructive border-destructive text-destructive-foreground animate-pulse" : "bg-white/5 border-white/15 text-white hover:bg-white/10"}`}
           >
             {transcribing ? <Loader2 className="w-4 h-4 animate-spin" /> : recording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}

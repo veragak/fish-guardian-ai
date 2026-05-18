@@ -15,8 +15,8 @@ export const Route = createFileRoute("/api/elevenlabs/stt")({
           return Response.json({ error: "audio file required (field 'audio')" }, { status: 400 });
         }
         const incoming = audio as File;
-        if (incoming.size < 1000) {
-          return Response.json({ error: "audio too short — hold the mic button while speaking" }, { status: 400 });
+        if (incoming.size < 3000) {
+          return Response.json({ error: "audio too short — click the mic, speak for a second, then click stop" }, { status: 400 });
         }
         if (incoming.size > 10 * 1024 * 1024) {
           return Response.json({ error: "audio too large (>10MB)" }, { status: 413 });
@@ -24,10 +24,10 @@ export const Route = createFileRoute("/api/elevenlabs/stt")({
 
         // Preserve original mime type & pick a matching extension so ElevenLabs can decode it.
         const mime = incoming.type || "audio/webm";
-        const ext = mime.includes("ogg") ? "ogg"
+        const ext = mime.includes("wav") ? "wav"
+          : mime.includes("ogg") ? "ogg"
           : mime.includes("mp4") || mime.includes("m4a") ? "m4a"
           : mime.includes("mpeg") || mime.includes("mp3") ? "mp3"
-          : mime.includes("wav") ? "wav"
           : "webm";
         const bytes = await incoming.arrayBuffer();
         const rebuilt = new File([bytes], `speech.${ext}`, { type: mime });
