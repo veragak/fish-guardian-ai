@@ -60,7 +60,10 @@ function DashboardView({ data }: { data: FarmDashboard }) {
               contact your veterinarian immediately.{" "}
               <span className="font-semibold">Estimated exposure: {fmtEUR(totals.estimatedLossEUR)}</span>
             </div>
-            <AlertSound active={critical.length > 0} />
+            <AlertSound
+              active={critical.length > 0}
+              speech={`Critical alert at ${farm.name}. Cage ${critical[0].position}: dissolved oxygen at ${critical[0].dissolvedOxygen.toFixed(1)} milligrams per liter, below the 7 milligram stress threshold. Mortality at ${critical[0].mortality.toFixed(1)} percent and rising. Likely early pasteurellosis outbreak. Recommended action: deploy aeration to raise oxygen above 8 milligrams per liter within 6 hours, stop feeding the affected cage for 24 hours, and contact your veterinarian. Estimated exposure if untreated: ${Math.round(totals.estimatedLossEUR / 1000)} thousand euros.`}
+            />
           </div>
         </div>
       )}
