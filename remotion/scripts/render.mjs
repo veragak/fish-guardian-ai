@@ -30,7 +30,7 @@ await renderMedia({
   codec: "h264",
   outputLocation: "/mnt/documents/aquasense_video.mp4",
   puppeteerInstance: browser,
-  muted: true,
+  muted: false,
   concurrency: 4,
   onProgress: ({ progress }) => {
     if (Math.round(progress * 100) % 10 === 0) {
