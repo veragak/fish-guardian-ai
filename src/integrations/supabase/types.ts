@@ -14,7 +14,107 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cages: {
+        Row: {
+          baseline_do: number
+          baseline_ph: number
+          baseline_temp: number
+          created_at: string
+          farm_id: string
+          fish_count: number
+          id: string
+          position: number
+        }
+        Insert: {
+          baseline_do?: number
+          baseline_ph?: number
+          baseline_temp?: number
+          created_at?: string
+          farm_id: string
+          fish_count?: number
+          id?: string
+          position: number
+        }
+        Update: {
+          baseline_do?: number
+          baseline_ph?: number
+          baseline_temp?: number
+          created_at?: string
+          farm_id?: string
+          fish_count?: number
+          id?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cages_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      farms: {
+        Row: {
+          cage_count: number
+          created_at: string
+          fish_per_cage: number
+          id: string
+          latitude: number
+          license: string | null
+          longitude: number
+          name: string
+          species: string
+          user_id: string
+        }
+        Insert: {
+          cage_count?: number
+          created_at?: string
+          fish_per_cage?: number
+          id?: string
+          latitude: number
+          license?: string | null
+          longitude: number
+          name: string
+          species?: string
+          user_id: string
+        }
+        Update: {
+          cage_count?: number
+          created_at?: string
+          fish_per_cage?: number
+          id?: string
+          latitude?: number
+          license?: string | null
+          longitude?: number
+          name?: string
+          species?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
