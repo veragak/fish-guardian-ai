@@ -73,11 +73,17 @@ function probeDur(file) {
   return parseFloat(out);
 }
 
-// ---- 1. Generate all chunks (parallel) ----
+// ---- 1. Generate all chunks (batched to respect concurrency limit) ----
 console.log("Generating", CHUNKS.length, "voice chunks...");
-const buffers = await Promise.all(
-  CHUNKS.map((text, i) => tts(text, CHUNKS[i - 1] || "", CHUNKS[i + 1] || "", i))
-);
+const BATCH = 4;
+const buffers = new Array(CHUNKS.length);
+for (let i = 0; i < CHUNKS.length; i += BATCH) {
+  const batch = CHUNKS.slice(i, i + BATCH);
+  const out = await Promise.all(
+    batch.map((text, j) => tts(text, CHUNKS[i + j - 1] || "", CHUNKS[i + j + 1] || "", i + j))
+  );
+  out.forEach((b, j) => (buffers[i + j] = b));
+}
 
 // Save and measure each
 const chunkDurations = [];
