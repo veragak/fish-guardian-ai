@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Send, Sparkles } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/lib/auth-context";
 import { chatWithFarm } from "@/lib/chat.functions";
 
