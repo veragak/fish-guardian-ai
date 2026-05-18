@@ -44,8 +44,11 @@ function Landing() {
               AquaSense combines live sea data with per-cage telemetry to warn you before an outbreak spreads.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link to="/auth" className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 transition">
-                Start free trial <ArrowRight className="w-4 h-4" />
+              <Link to="/demo" className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 transition">
+                Try the live demo <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link to="/auth" className="inline-flex items-center gap-2 rounded-md border border-white/20 px-5 py-3 text-sm font-semibold text-white hover:bg-white/5 transition">
+                Sign in / create farm
               </Link>
               <a href="#how" className="inline-flex items-center gap-2 rounded-md border border-white/20 px-5 py-3 text-sm font-semibold text-white hover:bg-white/5 transition">
                 See how it works

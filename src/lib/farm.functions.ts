@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { fetchMarine, modelCages, type CageReading, type MarineSnapshot } from "./marine";
+import { getNearbyZones, type NearbyZone } from "./barentswatch";
 
 export type FarmDashboard = {
   farm: {
@@ -21,6 +22,7 @@ export type FarmDashboard = {
     critical: number;
     estimatedLossEUR: number;
   };
+  nearbyZones: NearbyZone[];
 };
 
 export const getMyFarm = createServerFn({ method: "GET" })
@@ -126,5 +128,6 @@ export const getFarmDashboard = createServerFn({ method: "GET" })
         critical,
         estimatedLossEUR,
       },
+      nearbyZones: getNearbyZones(farm.latitude, farm.longitude, 5),
     };
   });

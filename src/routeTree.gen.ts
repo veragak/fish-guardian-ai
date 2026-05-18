@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as DemoRouteImport } from './routes/demo'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AiAssistantRouteImport } from './routes/ai-assistant'
@@ -20,6 +21,11 @@ import { Route as ApiElevenlabsTtsRouteImport } from './routes/api/elevenlabs/tt
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoRoute = DemoRouteImport.update({
+  id: '/demo',
+  path: '/demo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/ai-assistant': typeof AiAssistantRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
+  '/demo': typeof DemoRoute
   '/onboarding': typeof OnboardingRoute
   '/api/elevenlabs/tts': typeof ApiElevenlabsTtsRoute
 }
@@ -68,6 +75,7 @@ export interface FileRoutesByTo {
   '/ai-assistant': typeof AiAssistantRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
+  '/demo': typeof DemoRoute
   '/onboarding': typeof OnboardingRoute
   '/api/elevenlabs/tts': typeof ApiElevenlabsTtsRoute
 }
@@ -78,6 +86,7 @@ export interface FileRoutesById {
   '/ai-assistant': typeof AiAssistantRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
+  '/demo': typeof DemoRoute
   '/onboarding': typeof OnboardingRoute
   '/api/elevenlabs/tts': typeof ApiElevenlabsTtsRoute
 }
@@ -89,6 +98,7 @@ export interface FileRouteTypes {
     | '/ai-assistant'
     | '/auth'
     | '/dashboard'
+    | '/demo'
     | '/onboarding'
     | '/api/elevenlabs/tts'
   fileRoutesByTo: FileRoutesByTo
@@ -98,6 +108,7 @@ export interface FileRouteTypes {
     | '/ai-assistant'
     | '/auth'
     | '/dashboard'
+    | '/demo'
     | '/onboarding'
     | '/api/elevenlabs/tts'
   id:
@@ -107,6 +118,7 @@ export interface FileRouteTypes {
     | '/ai-assistant'
     | '/auth'
     | '/dashboard'
+    | '/demo'
     | '/onboarding'
     | '/api/elevenlabs/tts'
   fileRoutesById: FileRoutesById
@@ -117,6 +129,7 @@ export interface RootRouteChildren {
   AiAssistantRoute: typeof AiAssistantRoute
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRoute
+  DemoRoute: typeof DemoRoute
   OnboardingRoute: typeof OnboardingRoute
   ApiElevenlabsTtsRoute: typeof ApiElevenlabsTtsRoute
 }
@@ -128,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo': {
+      id: '/demo'
+      path: '/demo'
+      fullPath: '/demo'
+      preLoaderRoute: typeof DemoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -181,19 +201,10 @@ const rootRouteChildren: RootRouteChildren = {
   AiAssistantRoute: AiAssistantRoute,
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRoute,
+  DemoRoute: DemoRoute,
   OnboardingRoute: OnboardingRoute,
   ApiElevenlabsTtsRoute: ApiElevenlabsTtsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
