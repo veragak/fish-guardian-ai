@@ -14,20 +14,31 @@ export const Route = createFileRoute("/api/elevenlabs/stt")({
         if (!audio || typeof audio === "string") {
           return Response.json({ error: "audio file required (field 'audio')" }, { status: 400 });
         }
-        const blob = audio as Blob;
-        if (blob.size > 10 * 1024 * 1024) {
+        const incoming = audio as File;
+        if (incoming.size < 1000) {
+          return Response.json({ error: "audio too short — hold the mic button while speaking" }, { status: 400 });
+        }
+        if (incoming.size > 10 * 1024 * 1024) {
           return Response.json({ error: "audio too large (>10MB)" }, { status: 413 });
         }
 
+        // Preserve original mime type & pick a matching extension so ElevenLabs can decode it.
+        const mime = incoming.type || "audio/webm";
+        const ext = mime.includes("ogg") ? "ogg"
+          : mime.includes("mp4") || mime.includes("m4a") ? "m4a"
+          : mime.includes("mpeg") || mime.includes("mp3") ? "mp3"
+          : mime.includes("wav") ? "wav"
+          : "webm";
+        const bytes = await incoming.arrayBuffer();
+        const rebuilt = new File([bytes], `speech.${ext}`, { type: mime });
+
         const upstreamForm = new FormData();
-        upstreamForm.append("file", blob, "speech.webm");
-        upstreamForm.append("model_id", "scribe_v2");
-        upstreamForm.append("tag_audio_events", "false");
-        upstreamForm.append("diarize", "false");
+        upstreamForm.append("file", rebuilt);
+        upstreamForm.append("model_id", "scribe_v1");
 
         const upstream = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
           method: "POST",
-          headers: { "xi-api-key": apiKey },
+          headers: { "xi-api-key": apiKey, "Accept": "application/json" },
           body: upstreamForm,
         });
 
