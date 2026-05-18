@@ -6,6 +6,7 @@ import { AlertTriangle, ArrowDown, ArrowRight, Waves, Wind, Thermometer } from "
 import { useAuth } from "@/lib/auth-context";
 import { getFarmDashboard, type FarmDashboard } from "@/lib/farm.functions";
 import { Sparkline } from "../components/Sparkline";
+import { AlertSound } from "../components/AlertSound";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
