@@ -133,10 +133,11 @@ listLines.push(`file '${tailPath}'`);
 const listPath = path.join(TMP, "concat.txt");
 await fs.writeFile(listPath, listLines.join("\n"));
 
-// ---- 3. Concat into final voiceover ----
+// ---- 3. Concat into final voiceover (re-encode to eliminate frame-boundary clicks) ----
 const voPath = path.join(PUBLIC, "voiceover.mp3");
-execSync(`ffmpeg -y -f concat -safe 0 -i "${listPath}" -c copy "${voPath}" 2>/dev/null`);
+execSync(`ffmpeg -y -f concat -safe 0 -i "${listPath}" -ar 44100 -ac 2 -c:a libmp3lame -b:a 192k -af "aresample=44100,afade=t=in:st=0:d=0.05" "${voPath}" 2>/dev/null`);
 const voDur = probeDur(voPath);
+console.log(`Final voiceover: ${voDur.toFixed(2)}s`);
 console.log(`Final voiceover: ${voDur.toFixed(2)}s`);
 
 // ---- 4. Per-scene frame durations ----
