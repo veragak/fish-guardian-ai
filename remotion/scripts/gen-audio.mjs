@@ -153,9 +153,11 @@ console.log(`Final voiceover: ${voDur.toFixed(2)}s`);
 
 // ---- 4. Per-scene frame durations ----
 // scene_i covers chunk_i + the gap that follows it (or final pad)
-const sceneSeconds = chunkDurations.map((d, i) =>
-  i < chunkDurations.length - 1 ? d + GAP_SEC + extraPerGap : d + PAD_END_SEC
-);
+const sceneSeconds = chunkDurations.map((d, i) => {
+  if (i === chunkDurations.length - 1) return d + PAD_END_SEC;
+  const extraHold = i === 10 ? 2.0 : 0;
+  return d + GAP_SEC + extraPerGap + extraHold;
+});
 const sceneFrames = sceneSeconds.map((s) => Math.round(s * FPS));
 const totalFrames = sceneFrames.reduce((a, b) => a + b, 0);
 console.log(
