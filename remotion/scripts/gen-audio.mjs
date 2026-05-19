@@ -129,7 +129,9 @@ const listLines = [];
 for (let i = 0; i < chunkPaths.length; i++) {
   listLines.push(`file '${chunkPaths[i]}'`);
   if (i < chunkPaths.length - 1) {
-    const gap = GAP_SEC + extraPerGap;
+    // Hold the road-ahead scene longer before the AquaSense outro lands.
+    const extraHold = i === 10 ? 2.0 : 0;
+    const gap = GAP_SEC + extraPerGap + extraHold;
     const silPath = path.join(TMP, `gap-${String(i).padStart(2, "0")}.mp3`);
     await makeSilence(gap, silPath);
     listLines.push(`file '${silPath}'`);
