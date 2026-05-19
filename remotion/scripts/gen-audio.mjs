@@ -36,7 +36,7 @@ const CHUNKS = [
   "Forty-eight hours of head start. Time to isolate the cage, adjust feeding, call the vet, and save the fish.",
   "Act in forty-eight hours, only three percent loss. Wait twelve hours, thirty-four percent. Do nothing, and ninety-two percent of the cage is gone. Early action saves the fish, and saves the farm.",
   "A twenty billion euro global industry, racing to feed a growing planet. Built for the farmers who are doing it.",
-  "Our next step is partnering with pilot farms to train and refine our model in real conditions. From there, we roll out gradually, earning trust one farm at a time, until every farmer has the warning they deserve.",
+  "So what comes next? Our road ahead starts with partnering with a handful of pilot farms, where we train and refine our model under real ocean conditions. From there, we roll out gradually, earning trust one farm at a time. Step by step, fjord by fjord, until every farmer, everywhere, has the warning they truly deserve.",
   "AquaSense. Let's protect what feeds us. Built with care by Vera, Maggie, and Rishi. The future of aquaculture starts now. Visit aquasense dot app.",
 ];
 
