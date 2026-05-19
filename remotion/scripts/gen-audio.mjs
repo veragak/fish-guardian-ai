@@ -21,8 +21,10 @@ if (!KEY) throw new Error("ELEVENLABS_API_KEY missing");
 const FPS = 30;
 const VOICE_ID = "nPczCjzI2devNBz1zQrb"; // Brian — warm motivational
 const GAP_SEC = 0.55; // small breathing room between scenes
-const PAD_END_SEC = 3.8; // tail after final line — ensures "now" finishes cleanly
+const CHUNK_PAD_SEC = 0.18; // a little trailing room inside each spoken chunk
+const PAD_END_SEC = 4.8; // longer tail after final line so "now" lands fully
 const TARGET_TOTAL_SEC = 122; // ~2:02 so final words have room
+const extraHoldForScene = (i) => (i === 10 ? 2.0 : i === 9 ? 1.8 : 0);
 
 // ---- Per-scene narration (1 chunk per scene, matches the visuals) ----
 const CHUNKS = [
@@ -37,7 +39,7 @@ const CHUNKS = [
   "Act in forty-eight hours, only three percent loss. Wait twelve hours, thirty-four percent. Do nothing, and ninety-two percent of the cage is gone. Early action saves the fish, and saves the farm.",
   "A twenty billion euro global industry, racing to feed a growing planet. Built for the farmers who are doing it.",
   "So what comes next? Our road ahead starts with partnering with a handful of pilot farms, where we train and refine our model under real ocean conditions. From there, we roll out gradually, earning trust one farm at a time. Step by step, fjord by fjord, until every farmer, everywhere, has the warning they truly deserve.",
-  "AquaSense. Let's protect what feeds us. Built with care by Vera, Maggie, and Rishi. The future of aquaculture starts now. Visit aquasense dot app.",
+  "AquaSense. Let's protect what feeds us. Built with care by Vera, Maggie, and Rishi. The future of aquaculture starts now.",
 ];
 
 // ---- Helper ----
@@ -85,20 +87,16 @@ for (let i = 0; i < CHUNKS.length; i += BATCH) {
   out.forEach((b, j) => (buffers[i + j] = b));
 }
 
-// Save raw, then re-encode each chunk to a clean 44.1kHz stereo MP3 with a tiny
-// fade in/out so concat boundaries don't click or truncate the last phoneme.
+// Save raw, then decode each chunk to clean PCM WAV before concatenation.
+// This avoids MP3 seam artifacts and preserves the tail of each spoken phrase.
 const chunkDurations = [];
 const chunkPaths = [];
 for (let i = 0; i < buffers.length; i++) {
   const raw = path.join(TMP, `raw-${String(i).padStart(2, "0")}.mp3`);
   await fs.writeFile(raw, buffers[i]);
-  const rawDur = probeDur(raw);
-  const p = path.join(TMP, `chunk-${String(i).padStart(2, "0")}.mp3`);
-  // 40ms fade in + 60ms fade out, normalized sample rate, append 120ms of silence
-  // inside the chunk so the trailing consonant is never clipped by the concat seam.
-  const fadeOutStart = Math.max(0, rawDur - 0.06).toFixed(3);
+  const p = path.join(TMP, `chunk-${String(i).padStart(2, "0")}.wav`);
   execSync(
-    `ffmpeg -y -i "${raw}" -ar 44100 -ac 2 -c:a libmp3lame -b:a 192k -af "afade=t=in:st=0:d=0.04,afade=t=out:st=${fadeOutStart}:d=0.06,apad=pad_dur=0.12" "${p}" 2>/dev/null`
+    `ffmpeg -y -i "${raw}" -ar 44100 -ac 2 -c:a pcm_s16le -af "aresample=44100:resampler=soxr,apad=pad_dur=${CHUNK_PAD_SEC}" "${p}" 2>/dev/null`
   );
   const d = probeDur(p);
   chunkDurations.push(d);
@@ -120,7 +118,7 @@ console.log(`Extra padding per gap: ${extraPerGap.toFixed(3)}s`);
 // ---- 2. Build silence files (one per gap) ----
 async function makeSilence(seconds, outPath) {
   execSync(
-    `ffmpeg -y -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -t ${seconds.toFixed(3)} -q:a 9 -acodec libmp3lame "${outPath}" 2>/dev/null`
+    `ffmpeg -y -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -t ${seconds.toFixed(3)} -c:a pcm_s16le "${outPath}" 2>/dev/null`
   );
 }
 
@@ -130,32 +128,33 @@ for (let i = 0; i < chunkPaths.length; i++) {
   listLines.push(`file '${chunkPaths[i]}'`);
   if (i < chunkPaths.length - 1) {
     // Hold the road-ahead scene longer before the AquaSense outro lands.
-    const extraHold = i === 10 ? 2.0 : i === 9 ? 1.8 : 0;
+    const extraHold = extraHoldForScene(i);
     const gap = GAP_SEC + extraPerGap + extraHold;
-    const silPath = path.join(TMP, `gap-${String(i).padStart(2, "0")}.mp3`);
+    const silPath = path.join(TMP, `gap-${String(i).padStart(2, "0")}.wav`);
     await makeSilence(gap, silPath);
     listLines.push(`file '${silPath}'`);
   }
 }
-const tailPath = path.join(TMP, "tail.mp3");
+const tailPath = path.join(TMP, "tail.wav");
 await makeSilence(PAD_END_SEC, tailPath);
 listLines.push(`file '${tailPath}'`);
 
 const listPath = path.join(TMP, "concat.txt");
 await fs.writeFile(listPath, listLines.join("\n"));
 
-// ---- 3. Concat into final voiceover (re-encode to eliminate frame-boundary clicks) ----
+// ---- 3. Concat into final voiceover (PCM first, then single MP3 encode) ----
 const voPath = path.join(PUBLIC, "voiceover.mp3");
-execSync(`ffmpeg -y -f concat -safe 0 -i "${listPath}" -ar 44100 -ac 2 -c:a libmp3lame -b:a 192k -af "aresample=44100,afade=t=in:st=0:d=0.05" "${voPath}" 2>/dev/null`);
+const voWavPath = path.join(TMP, "voiceover.wav");
+execSync(`ffmpeg -y -f concat -safe 0 -i "${listPath}" -c:a pcm_s16le "${voWavPath}" 2>/dev/null`);
+execSync(`ffmpeg -y -i "${voWavPath}" -ar 44100 -ac 2 -c:a libmp3lame -b:a 192k "${voPath}" 2>/dev/null`);
 const voDur = probeDur(voPath);
-console.log(`Final voiceover: ${voDur.toFixed(2)}s`);
 console.log(`Final voiceover: ${voDur.toFixed(2)}s`);
 
 // ---- 4. Per-scene frame durations ----
 // scene_i covers chunk_i + the gap that follows it (or final pad)
 const sceneSeconds = chunkDurations.map((d, i) => {
   if (i === chunkDurations.length - 1) return d + PAD_END_SEC;
-  const extraHold = i === 10 ? 2.0 : i === 9 ? 1.8 : 0;
+  const extraHold = extraHoldForScene(i);
   return d + GAP_SEC + extraPerGap + extraHold;
 });
 const sceneFrames = sceneSeconds.map((s) => Math.round(s * FPS));
