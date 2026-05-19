@@ -386,33 +386,34 @@ const Scene10: React.FC = () => {
   );
 };
 
-// ============ 11 — PRICING / ROADMAP ============
+// ============ 11 — ROADMAP ============
 const Scene11: React.FC = () => {
   const { f, dur } = useProgress();
   const { fps } = useVideoConfig();
   const op = useShellOpacity();
-  const priceScale = spring({ frame: f - 5, fps, config: { damping: 14 } });
-  const r1 = interpolate(f, [dur * 0.4, dur * 0.55], [0, 1], { extrapolateRight: "clamp", extrapolateLeft: "clamp" });
-  const r2 = interpolate(f, [dur * 0.6, dur * 0.75], [0, 1], { extrapolateRight: "clamp", extrapolateLeft: "clamp" });
+  const headOp = spring({ frame: f - 5, fps, config: { damping: 16 } });
+  const r1 = interpolate(f, [dur * 0.25, dur * 0.45], [0, 1], { extrapolateRight: "clamp", extrapolateLeft: "clamp" });
+  const r2 = interpolate(f, [dur * 0.5, dur * 0.7], [0, 1], { extrapolateRight: "clamp", extrapolateLeft: "clamp" });
+  const tagOp = interpolate(f, [dur * 0.75, dur * 0.9], [0, 1], { extrapolateRight: "clamp" });
   return (
     <AbsoluteFill style={{ background: NAVY, opacity: op }}>
-      <OceanBG intensity={0.5} />
-      <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column", gap: 40 }}>
-        <div style={{ ...baseText, color: SLATE, fontSize: 24, letterSpacing: "0.3em", textTransform: "uppercase" }}>Pricing</div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 12, transform: `scale(${0.7 + priceScale * 0.3})`, opacity: priceScale }}>
-          <div style={{ ...baseText, fontWeight: 900, fontSize: 200, color: BLUE }}>€1,500</div>
+      <OceanBG intensity={0.6} />
+      <Particles count={20} />
+      <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column", gap: 50 }}>
+        <div style={{ ...baseText, color: BLUE, fontSize: 26, letterSpacing: "0.3em", textTransform: "uppercase", fontWeight: 700, opacity: headOp }}>The Road Ahead</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 80, marginTop: 10 }}>
+          <div style={{ ...baseText, fontSize: 36, opacity: r1, textAlign: "center", transform: `translateY(${(1 - r1) * 20}px)` }}>
+            <div style={{ color: GREEN, fontWeight: 900, fontSize: 90, letterSpacing: "0.05em" }}>Q2 2026</div>
+            <div style={{ marginTop: 12, color: SLATE, fontSize: 32 }}>Pilots launch</div>
+          </div>
+          <div style={{ width: 120, height: 2, background: SLATE, opacity: 0.3 }} />
+          <div style={{ ...baseText, fontSize: 36, opacity: r2, textAlign: "center", transform: `translateY(${(1 - r2) * 20}px)` }}>
+            <div style={{ color: BLUE, fontWeight: 900, fontSize: 90, letterSpacing: "0.05em" }}>Q1 2027</div>
+            <div style={{ marginTop: 12, color: SLATE, fontSize: 32 }}>Commercial rollout</div>
+          </div>
         </div>
-        <div style={{ ...baseText, color: SLATE, fontSize: 30 }}>per cage · per year</div>
-        <div style={{ display: "flex", gap: 60, marginTop: 30 }}>
-          <div style={{ ...baseText, fontSize: 28, opacity: r1, textAlign: "center" }}>
-            <div style={{ color: GREEN, fontWeight: 700, fontSize: 22, letterSpacing: "0.2em", textTransform: "uppercase" }}>Q2 2026</div>
-            <div style={{ marginTop: 8 }}>Pilots launch</div>
-          </div>
-          <div style={{ width: 2, height: 70, background: SLATE, opacity: 0.3 }} />
-          <div style={{ ...baseText, fontSize: 28, opacity: r2, textAlign: "center" }}>
-            <div style={{ color: GREEN, fontWeight: 700, fontSize: 22, letterSpacing: "0.2em", textTransform: "uppercase" }}>Q1 2027</div>
-            <div style={{ marginTop: 8 }}>Commercial rollout</div>
-          </div>
+        <div style={{ ...baseText, fontSize: 34, opacity: tagOp, marginTop: 40, textAlign: "center", maxWidth: 1400 }}>
+          Built to scale — <span style={{ color: BLUE, fontWeight: 700 }}>from the smallest pilot to the largest fjord.</span>
         </div>
       </AbsoluteFill>
     </AbsoluteFill>
