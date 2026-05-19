@@ -101,14 +101,14 @@ const Scene1: React.FC = () => {
   return (
     <AbsoluteFill style={{ background: NAVY, opacity: op }}>
       <AbsoluteFill style={{ transform: `scale(${scale})` }}>
-        <OceanBG intensity={1.4} />
-        <Particles count={50} />
+        <PhotoBG src="norway-fjord.jpg" overlay={0.6} kenBurns={0.12} />
       </AbsoluteFill>
+      <Particles count={30} />
       <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column", gap: 20 }}>
-        <div style={{ ...baseText, fontWeight: 900, fontSize: 240, fontVariantNumeric: "tabular-nums" }}>
+        <div style={{ ...baseText, fontWeight: 900, fontSize: 240, fontVariantNumeric: "tabular-nums", textShadow: "0 4px 40px rgba(0,0,0,0.6)" }}>
           {num.toLocaleString("en-US")}
         </div>
-        <div style={{ ...baseText, color: SLATE, fontWeight: 400, fontSize: 38, opacity: subOp, letterSpacing: "0.02em" }}>
+        <div style={{ ...baseText, color: WHITE, fontWeight: 400, fontSize: 38, opacity: subOp, letterSpacing: "0.02em", textShadow: "0 2px 20px rgba(0,0,0,0.8)" }}>
           farmed salmon died in Norway in 2023
         </div>
       </AbsoluteFill>
