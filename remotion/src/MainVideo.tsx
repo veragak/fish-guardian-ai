@@ -36,6 +36,20 @@ const AMBER = "#FACC15";
 
 const baseText: React.CSSProperties = { fontFamily, color: WHITE, letterSpacing: "-0.02em" };
 
+// ============ Photo background helper ============
+const PhotoBG: React.FC<{ src: string; overlay?: number; kenBurns?: number }> = ({ src, overlay = 0.55, kenBurns = 0.08 }) => {
+  const { f, dur } = useProgress();
+  const scale = 1 + (f / dur) * kenBurns;
+  return (
+    <AbsoluteFill>
+      <AbsoluteFill style={{ transform: `scale(${scale})`, transformOrigin: "center center" }}>
+        <img src={staticFile(src)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+      </AbsoluteFill>
+      <AbsoluteFill style={{ background: `linear-gradient(180deg, rgba(10,22,40,${overlay * 0.7}) 0%, rgba(10,22,40,${overlay}) 60%, rgba(10,22,40,${overlay + 0.15}) 100%)` }} />
+    </AbsoluteFill>
+  );
+};
+
 // ============ Shared ============
 const useProgress = () => {
   const f = useCurrentFrame();
