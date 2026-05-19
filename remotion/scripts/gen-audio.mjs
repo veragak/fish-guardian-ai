@@ -20,9 +20,9 @@ if (!KEY) throw new Error("ELEVENLABS_API_KEY missing");
 
 const FPS = 30;
 const VOICE_ID = "nPczCjzI2devNBz1zQrb"; // Brian — warm motivational
-const GAP_SEC = 0.45; // small breathing room between scenes
-const PAD_END_SEC = 1.0; // tail after final line
-const TARGET_TOTAL_SEC = 120; // exact 2:00
+const GAP_SEC = 0.55; // small breathing room between scenes
+const PAD_END_SEC = 2.2; // tail after final line — ensures last sentence isn't clipped
+const TARGET_TOTAL_SEC = 122; // ~2:02 so final words have room
 
 // ---- Per-scene narration (1 chunk per scene, matches the visuals) ----
 const CHUNKS = [
@@ -36,7 +36,7 @@ const CHUNKS = [
   "Forty-eight hours of head start. Time to isolate the cage, adjust feeding, call the vet, and save the fish.",
   "Act in forty-eight hours, only three percent loss. Wait twelve hours, thirty-four percent. Do nothing, and ninety-two percent of the cage is gone. Early action saves the fish, and saves the farm.",
   "A twenty billion euro global industry, racing to feed a growing planet. Built for the farmers who are doing it.",
-  "Pilots launch in Q2 twenty twenty-six. Commercial rollout in Q1 twenty twenty-seven. Built to scale, from the smallest pilot to the largest fjord.",
+  "Our next step is partnering with pilot farms to train and refine our model in real conditions. From there, we roll out gradually, earning trust one farm at a time, until every farmer has the warning they deserve.",
   "AquaSense. Let's protect what feeds us. Built with care by Vera, Maggie, and Rishi. The future of aquaculture starts now. Visit aquasense dot app.",
 ];
 
@@ -85,12 +85,21 @@ for (let i = 0; i < CHUNKS.length; i += BATCH) {
   out.forEach((b, j) => (buffers[i + j] = b));
 }
 
-// Save and measure each
+// Save raw, then re-encode each chunk to a clean 44.1kHz stereo MP3 with a tiny
+// fade in/out so concat boundaries don't click or truncate the last phoneme.
 const chunkDurations = [];
 const chunkPaths = [];
 for (let i = 0; i < buffers.length; i++) {
+  const raw = path.join(TMP, `raw-${String(i).padStart(2, "0")}.mp3`);
+  await fs.writeFile(raw, buffers[i]);
+  const rawDur = probeDur(raw);
   const p = path.join(TMP, `chunk-${String(i).padStart(2, "0")}.mp3`);
-  await fs.writeFile(p, buffers[i]);
+  // 40ms fade in + 60ms fade out, normalized sample rate, append 120ms of silence
+  // inside the chunk so the trailing consonant is never clipped by the concat seam.
+  const fadeOutStart = Math.max(0, rawDur - 0.06).toFixed(3);
+  execSync(
+    `ffmpeg -y -i "${raw}" -ar 44100 -ac 2 -c:a libmp3lame -b:a 192k -af "afade=t=in:st=0:d=0.04,afade=t=out:st=${fadeOutStart}:d=0.06,apad=pad_dur=0.12" "${p}" 2>/dev/null`
+  );
   const d = probeDur(p);
   chunkDurations.push(d);
   chunkPaths.push(p);

@@ -402,18 +402,18 @@ const Scene11: React.FC = () => {
       <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column", gap: 50 }}>
         <div style={{ ...baseText, color: BLUE, fontSize: 26, letterSpacing: "0.3em", textTransform: "uppercase", fontWeight: 700, opacity: headOp }}>The Road Ahead</div>
         <div style={{ display: "flex", alignItems: "center", gap: 80, marginTop: 10 }}>
-          <div style={{ ...baseText, fontSize: 36, opacity: r1, textAlign: "center", transform: `translateY(${(1 - r1) * 20}px)` }}>
-            <div style={{ color: GREEN, fontWeight: 900, fontSize: 90, letterSpacing: "0.05em" }}>Q2 2026</div>
-            <div style={{ marginTop: 12, color: SLATE, fontSize: 32 }}>Pilots launch</div>
+          <div style={{ ...baseText, fontSize: 36, opacity: r1, textAlign: "center", transform: `translateY(${(1 - r1) * 20}px)`, maxWidth: 480 }}>
+            <div style={{ color: GREEN, fontWeight: 900, fontSize: 64, letterSpacing: "0.02em", lineHeight: 1.1 }}>Pilot farms</div>
+            <div style={{ marginTop: 16, color: SLATE, fontSize: 30, lineHeight: 1.35 }}>Train the model in real conditions</div>
           </div>
           <div style={{ width: 120, height: 2, background: SLATE, opacity: 0.3 }} />
-          <div style={{ ...baseText, fontSize: 36, opacity: r2, textAlign: "center", transform: `translateY(${(1 - r2) * 20}px)` }}>
-            <div style={{ color: BLUE, fontWeight: 900, fontSize: 90, letterSpacing: "0.05em" }}>Q1 2027</div>
-            <div style={{ marginTop: 12, color: SLATE, fontSize: 32 }}>Commercial rollout</div>
+          <div style={{ ...baseText, fontSize: 36, opacity: r2, textAlign: "center", transform: `translateY(${(1 - r2) * 20}px)`, maxWidth: 480 }}>
+            <div style={{ color: BLUE, fontWeight: 900, fontSize: 64, letterSpacing: "0.02em", lineHeight: 1.1 }}>Gradual rollout</div>
+            <div style={{ marginTop: 16, color: SLATE, fontSize: 30, lineHeight: 1.35 }}>Earning trust, one farm at a time</div>
           </div>
         </div>
         <div style={{ ...baseText, fontSize: 34, opacity: tagOp, marginTop: 40, textAlign: "center", maxWidth: 1400 }}>
-          Built to scale — <span style={{ color: BLUE, fontWeight: 700 }}>from the smallest pilot to the largest fjord.</span>
+          Built for the farmers — <span style={{ color: BLUE, fontWeight: 700 }}>protecting every cage, every coastline.</span>
         </div>
       </AbsoluteFill>
     </AbsoluteFill>
