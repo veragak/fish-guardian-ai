@@ -369,17 +369,16 @@ const Scene10: React.FC = () => {
   const farmerOp = interpolate(f, [dur * 0.7, dur * 0.85], [0, 1], { extrapolateRight: "clamp" });
   return (
     <AbsoluteFill style={{ background: NAVY, opacity: op }}>
-      <OceanBG intensity={0.7} />
-      <Particles count={20} />
+      <PhotoBG src="norway-coast.jpg" overlay={0.6} kenBurns={0.1} />
       <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column", gap: 24 }}>
-        <div style={{ ...baseText, color: BLUE, fontSize: 24, letterSpacing: "0.3em", textTransform: "uppercase", fontWeight: 700, opacity: headerOp }}>
+        <div style={{ ...baseText, color: BLUE, fontSize: 24, letterSpacing: "0.3em", textTransform: "uppercase", fontWeight: 700, opacity: headerOp, textShadow: "0 2px 20px rgba(0,0,0,0.8)" }}>
           The opportunity
         </div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 16 }}>
-          <div style={{ ...baseText, fontWeight: 900, fontSize: 220, color: BLUE, fontVariantNumeric: "tabular-nums" }}>€{num}B</div>
+          <div style={{ ...baseText, fontWeight: 900, fontSize: 220, color: WHITE, fontVariantNumeric: "tabular-nums", textShadow: "0 4px 40px rgba(0,0,0,0.7)" }}>€{num}B</div>
         </div>
-        <div style={{ ...baseText, color: SLATE, fontSize: 32, opacity: subOp }}>global aquaculture industry</div>
-        <div style={{ ...baseText, fontSize: 30, opacity: farmerOp, marginTop: 30, textAlign: "center", maxWidth: 1300 }}>
+        <div style={{ ...baseText, color: WHITE, fontSize: 32, opacity: subOp, textShadow: "0 2px 20px rgba(0,0,0,0.8)" }}>global aquaculture industry</div>
+        <div style={{ ...baseText, fontSize: 30, opacity: farmerOp, marginTop: 30, textAlign: "center", maxWidth: 1300, textShadow: "0 2px 20px rgba(0,0,0,0.8)" }}>
           Built for <span style={{ color: BLUE, fontWeight: 700 }}>the people who feed the world.</span>
         </div>
       </AbsoluteFill>
