@@ -20,9 +20,9 @@ if (!KEY) throw new Error("ELEVENLABS_API_KEY missing");
 
 const FPS = 30;
 const VOICE_ID = "nPczCjzI2devNBz1zQrb"; // Brian — warm motivational
-const GAP_SEC = 0.45; // small breathing room between scenes
-const PAD_END_SEC = 1.0; // tail after final line
-const TARGET_TOTAL_SEC = 120; // exact 2:00
+const GAP_SEC = 0.55; // small breathing room between scenes
+const PAD_END_SEC = 2.2; // tail after final line — ensures last sentence isn't clipped
+const TARGET_TOTAL_SEC = 122; // ~2:02 so final words have room
 
 // ---- Per-scene narration (1 chunk per scene, matches the visuals) ----
 const CHUNKS = [
