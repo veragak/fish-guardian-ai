@@ -85,12 +85,21 @@ for (let i = 0; i < CHUNKS.length; i += BATCH) {
   out.forEach((b, j) => (buffers[i + j] = b));
 }
 
-// Save and measure each
+// Save raw, then re-encode each chunk to a clean 44.1kHz stereo MP3 with a tiny
+// fade in/out so concat boundaries don't click or truncate the last phoneme.
 const chunkDurations = [];
 const chunkPaths = [];
 for (let i = 0; i < buffers.length; i++) {
+  const raw = path.join(TMP, `raw-${String(i).padStart(2, "0")}.mp3`);
+  await fs.writeFile(raw, buffers[i]);
+  const rawDur = probeDur(raw);
   const p = path.join(TMP, `chunk-${String(i).padStart(2, "0")}.mp3`);
-  await fs.writeFile(p, buffers[i]);
+  // 40ms fade in + 60ms fade out, normalized sample rate, append 120ms of silence
+  // inside the chunk so the trailing consonant is never clipped by the concat seam.
+  const fadeOutStart = Math.max(0, rawDur - 0.06).toFixed(3);
+  execSync(
+    `ffmpeg -y -i "${raw}" -ar 44100 -ac 2 -c:a libmp3lame -b:a 192k -af "afade=t=in:st=0:d=0.04,afade=t=out:st=${fadeOutStart}:d=0.06,apad=pad_dur=0.12" "${p}" 2>/dev/null`
+  );
   const d = probeDur(p);
   chunkDurations.push(d);
   chunkPaths.push(p);
