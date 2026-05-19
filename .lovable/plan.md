@@ -85,3 +85,6 @@ src/components/
 - No real chat backend (input is decorative)
 - No auth, no DB
 - No animations beyond subtle hover transitions
+
+## App
+https://fish-guardian-ai.lovable.app
