@@ -122,17 +122,11 @@ const Scene2: React.FC = () => {
   const op = useShellOpacity();
   const textOp = interpolate(f, [dur * 0.1, dur * 0.3], [0, 1], { extrapolateRight: "clamp" });
   const slide = interpolate(f, [dur * 0.1, dur * 0.3], [40, 0], { extrapolateRight: "clamp" });
-  const shaft = (i: number) => {
-    const x = 150 + i * 280;
-    const sway = Math.sin(f / 30 + i) * 30;
-    return <div key={i} style={{ position: "absolute", left: x + sway, top: -100, width: 160, height: HEIGHT + 200, background: `linear-gradient(180deg, rgba(14,165,233,0.28) 0%, rgba(14,165,233,0.02) 70%, transparent 100%)`, transform: `rotate(${-8 + i}deg)`, filter: "blur(18px)" }} />;
-  };
   return (
-    <AbsoluteFill style={{ background: "#031523", opacity: op }}>
-      <AbsoluteFill style={{ background: `radial-gradient(circle at 50% 30%, #0b3a5c 0%, #031523 70%)` }} />
-      {[0, 1, 2, 3, 4, 5, 6].map(shaft)}
+    <AbsoluteFill style={{ background: NAVY, opacity: op }}>
+      <PhotoBG src="salmon-underwater.jpg" overlay={0.65} kenBurns={0.1} />
       <AbsoluteFill style={{ justifyContent: "flex-end", padding: "120px 140px" }}>
-        <div style={{ ...baseText, fontWeight: 700, fontSize: 92, opacity: textOp, transform: `translateY(${slide}px)`, lineHeight: 1.05, maxWidth: 1500 }}>
+        <div style={{ ...baseText, fontWeight: 700, fontSize: 92, opacity: textOp, transform: `translateY(${slide}px)`, lineHeight: 1.05, maxWidth: 1500, textShadow: "0 4px 30px rgba(0,0,0,0.8)" }}>
           By the time farmers see it,<br />
           <span style={{ color: CORAL }}>it's already too late.</span>
         </div>
