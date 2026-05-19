@@ -130,7 +130,7 @@ for (let i = 0; i < chunkPaths.length; i++) {
   listLines.push(`file '${chunkPaths[i]}'`);
   if (i < chunkPaths.length - 1) {
     // Hold the road-ahead scene longer before the AquaSense outro lands.
-    const extraHold = i === 10 ? 2.0 : 0;
+    const extraHold = i === 10 ? 2.0 : i === 9 ? 1.8 : 0;
     const gap = GAP_SEC + extraPerGap + extraHold;
     const silPath = path.join(TMP, `gap-${String(i).padStart(2, "0")}.mp3`);
     await makeSilence(gap, silPath);
@@ -155,7 +155,7 @@ console.log(`Final voiceover: ${voDur.toFixed(2)}s`);
 // scene_i covers chunk_i + the gap that follows it (or final pad)
 const sceneSeconds = chunkDurations.map((d, i) => {
   if (i === chunkDurations.length - 1) return d + PAD_END_SEC;
-  const extraHold = i === 10 ? 2.0 : 0;
+  const extraHold = i === 10 ? 2.0 : i === 9 ? 1.8 : 0;
   return d + GAP_SEC + extraPerGap + extraHold;
 });
 const sceneFrames = sceneSeconds.map((s) => Math.round(s * FPS));
