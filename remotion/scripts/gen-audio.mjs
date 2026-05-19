@@ -36,7 +36,7 @@ const CHUNKS = [
   "Forty-eight hours of head start. Time to isolate the cage, adjust feeding, call the vet, and save the fish.",
   "Act in forty-eight hours, only three percent loss. Wait twelve hours, thirty-four percent. Do nothing, and ninety-two percent of the cage is gone. Early action saves the fish, and saves the farm.",
   "A twenty billion euro global industry, racing to feed a growing planet. Built for the farmers who are doing it.",
-  "Just fifteen hundred euros per cage, per year. Pilots launching Q2 twenty twenty-six. Commercial rollout Q1 twenty twenty-seven.",
+  "Pilots launch in Q2 twenty twenty-six. Commercial rollout in Q1 twenty twenty-seven. Built to scale, from the smallest pilot to the largest fjord.",
   "AquaSense. Let's protect what feeds us. Built with care by Vera, Maggie, and Rishi. The future of aquaculture starts now. Visit aquasense dot app.",
 ];
 
@@ -133,10 +133,11 @@ listLines.push(`file '${tailPath}'`);
 const listPath = path.join(TMP, "concat.txt");
 await fs.writeFile(listPath, listLines.join("\n"));
 
-// ---- 3. Concat into final voiceover ----
+// ---- 3. Concat into final voiceover (re-encode to eliminate frame-boundary clicks) ----
 const voPath = path.join(PUBLIC, "voiceover.mp3");
-execSync(`ffmpeg -y -f concat -safe 0 -i "${listPath}" -c copy "${voPath}" 2>/dev/null`);
+execSync(`ffmpeg -y -f concat -safe 0 -i "${listPath}" -ar 44100 -ac 2 -c:a libmp3lame -b:a 192k -af "aresample=44100,afade=t=in:st=0:d=0.05" "${voPath}" 2>/dev/null`);
 const voDur = probeDur(voPath);
+console.log(`Final voiceover: ${voDur.toFixed(2)}s`);
 console.log(`Final voiceover: ${voDur.toFixed(2)}s`);
 
 // ---- 4. Per-scene frame durations ----
