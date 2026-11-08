@@ -88,11 +88,10 @@ src/
 │   ├── Sparkline.tsx          small trend lines on each cage
 │   └── ui/                    standard buttons, menus, dialogs (generated, not custom)
 │
-├── data/                    first prototype's fixed demo data (no longer used)
 └── integrations/supabase/   connection to the database (generated)
 
 supabase/migrations/         database tables: profiles, farms, cages, with access rules
-remotion/                    the promo video: 12 scenes with voiceover and music
+promo-video/                 the promo video: 12 scenes with voiceover and music
 .lovable/plan.md             the original build plan
 ```
 
@@ -100,7 +99,7 @@ Files at the top level, such as `package.json`, `vite.config.ts`, `wrangler.json
 
 ## Promo video
 
-The `remotion/` folder contains a short video presenting AquaSense in 12 scenes: hook, problem, cost, solution, sensors, dashboard, 48-hour alert, simulator, market, roadmap, and credits. It is written as code with Remotion. The voiceover is generated with ElevenLabs by `remotion/scripts/gen-audio.mjs`, and `remotion/scripts/render.mjs` renders the final video.
+The `promo-video/` folder contains a short video presenting AquaSense in 12 scenes: hook, problem, cost, solution, sensors, dashboard, 48-hour alert, simulator, market, roadmap, and credits. It is written as code with Remotion. The voiceover is generated with ElevenLabs by `promo-video/scripts/gen-audio.mjs`, and `promo-video/scripts/render.mjs` renders the final video.
 
 ## Run it yourself
 
