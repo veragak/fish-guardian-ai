@@ -2,8 +2,6 @@
 
 **Detect fish disease 48 hours before it's visible.**
 
-Built by Vera, Maggie and Rishi.
-
 🌐 **Live app: [fish-guardian-ai.lovable.app](https://fish-guardian-ai.lovable.app)**. Open **/demo** to explore a sample farm without signing up.
 
 AquaSense is a web app that warns salmon farmers when a cage is at risk of a disease outbreak. It combines live ocean data with per-cage sensor readings, scores each cage's risk, raises a spoken alert when a cage turns critical, and lets the farmer ask an AI assistant what to do.
